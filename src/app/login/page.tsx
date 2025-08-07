@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import Button, { ColorTypes } from '../components/ui/button'
 
 import { createClient } from '@/app/utils/supabase/component'
 
@@ -43,7 +44,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-[calc(100vh-var(--navbar-height))] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -92,22 +93,21 @@ export default function LoginPage() {
           </div>
 
           <div className="flex space-x-4">
-            <button
-              type="button"
+            <Button
               onClick={logIn}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2 px-4"
             >
               {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              color={ColorTypes.secondary}
               onClick={signUp}
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full flex justify-center py-2 px-4"
             >
               {loading ? 'Signing up...' : 'Sign up'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
