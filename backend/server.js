@@ -270,7 +270,6 @@ app.post('/api/briefcases/:id/request', authenticateToken, async (req, res) => {
 
     briefcase.accessRequests.push({ userId: req.user.userId, status: 'pending' });
     await briefcase.save();
- MSW: I'm not sure what this means
     
     res.json({ message: 'Access request submitted' });
   } catch (error) {
