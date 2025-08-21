@@ -1,8 +1,8 @@
-// backend/src/services/projectService.ts
-import { supabase } from '../lib/supabaseServer';
-import { logger } from '../lib/logger';
-import { Project } from '../types/models';
-import { AUDIT_EVENTS } from '../types/enum';
+// backend/src/services/project.ts
+import { supabase } from '../../lib/supabaseServer';
+import { logger } from '../../lib/logger';
+import { Project } from '../../types/models';
+import { AUDIT_EVENTS } from '../../types/enum';
 import { randomUUID } from 'crypto';
 
 interface CreateProjectInput {
@@ -53,7 +53,7 @@ export const createProject = async (
   }
 
   await supabase.from('audit_events').insert({
-    event_type: AUDIT_EVENTS.PROJECT_CREATED,
+    event_type: AUDIT_EVENTS.PROJECT_CREATED, // Updated: enum access
     org_id: userCtx.orgId,
     user_id: userCtx.userId,
     payload: { projectId: project.id, title: project.title },
@@ -61,4 +61,26 @@ export const createProject = async (
 
   logger.info('Project created', { requestId, userId: userCtx.userId, projectId: project.id });
   return project;
+};
+
+export const getProject = async (
+  userCtx: UserContext,
+  projectId: string,
+  requestId: string
+): Promise<Project | null> => {
+  logger.info('Fetching project', { requestId, userId: userCtx.userId, projectId });
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .eq('org_id', userCtx.orgId)
+    .single();
+
+  if (error || !data) {
+    logger.warn('Project not found or unauthorized', { requestId, userId: userCtx.userId, projectId, error: error?.message });
+    return null;
+  }
+
+  logger.info('Project fetched', { requestId, userId: userCtx.userId, projectId });
+  return data as Project;
 };
