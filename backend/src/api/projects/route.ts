@@ -4,7 +4,7 @@ import { requireAuth } from '../../lib/auth';
 import { resolveOrgContext } from '../../lib/orgContext';
 import { createProject } from '../../services/projectService';
 import { logger } from '../../lib/logger';
-import { SECURITY_LEVELS } from '../../types/enums';
+import { SECURITY_LEVELS } from '../../types/enum';
 
 const router = Router();
 
@@ -19,17 +19,23 @@ interface CreateProjectRequest {
   owner_id?: string;
 }
 
-router.post('/', requireAuth, resolveOrgContext, async (req: Request, res: Response) => {
-  const requestId = req.session?.requestId;
+interface AuthenticatedRequest extends Request {
+  user?: { userId: string; email: string };
+  context?: { requestId: string };
+  org?: { orgId: string; role: string; clearance: number };
+}
+
+router.post('/', requireAuth, resolveOrgContext, async (req: AuthenticatedRequest, res: Response) => {
+  const requestId = req.context?.requestId;
   const { teamId, title, description, clearanceLevel, budget_amount, budget_currency, deadline, owner_id } = req.body as CreateProjectRequest;
 
   if (!teamId || !title || !Object.values(SECURITY_LEVELS).includes(clearanceLevel)) {
-    logger.warn({ requestId }, 'Invalid request body');
+    logger.warn('Invalid request body', { requestId });
     return res.status(400).json({ error: 'Team ID, title, and valid clearance level are required' });
   }
 
   if (req.org!.clearance < clearanceLevel) {
-    logger.warn({ requestId, userId: req.user!.userId, clearanceLevel }, 'Insufficient clearance');
+    logger.warn('Insufficient clearance', { requestId, userId: req.user!.userId, clearanceLevel });
     return res.status(403).json({ error: 'Insufficient clearance' });
   }
 
@@ -39,10 +45,10 @@ router.post('/', requireAuth, resolveOrgContext, async (req: Request, res: Respo
       { teamId, title, description, budget_amount, budget_currency, deadline, owner_id }
     );
 
-    logger.info({ requestId, projectId: project.id }, 'Project created');
+    logger.info('Project created', { requestId, projectId: project.id });
     return res.status(201).json({ projectId: project.id, title, description });
   } catch (error: any) {
-    logger.error({ requestId, error: error.message }, 'Error creating project');
+    logger.error('Error creating project', { requestId, error: error.message });
     return res.status(400).json({ error: error.message });
   }
 });

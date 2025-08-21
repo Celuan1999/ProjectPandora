@@ -1,13 +1,19 @@
 // backend/src/api/admin/users/route.ts
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../../../lib/auth';
 import { logger } from '../../../lib/logger';
 
 const router = Router();
 
-router.get('/', requireAuth, (req, res) => {
-  const requestId = req.session?.requestId;
-  logger.info({ requestId }, 'Fetching admin users');
+// Define the custom request interface
+interface AuthenticatedRequest extends Request {
+  user?: { userId: string; email: string };
+  context?: { requestId: string };
+}
+
+router.get('/', requireAuth, (req: AuthenticatedRequest, res: Response, _next: NextFunction) => {
+  const requestId = req.context?.requestId;
+  logger.info('Fetching admin users', { requestId });
   res.json({ message: 'Admin users endpoint' });
 });
 

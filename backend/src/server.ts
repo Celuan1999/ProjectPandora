@@ -13,12 +13,12 @@ app.use(express.json());
 
 app.use('/api/admin/users', adminUsersRouter);
 app.use('/api/projects', projectsRouter);
-
+//Message needs to be first with the metadata second for Winston logging purposes
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error({ error: err.message, stack: err.stack }, 'Unhandled error');
+  logger.error('Unhandled error', { error: err.message, stack: err.stack });
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 app.listen(PORT, () => {
-  logger.info({ port: PORT }, `Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`, { port: PORT });
 });
