@@ -1,11 +1,16 @@
 {
-  "name": "pandora-backend",
+  "name": "project-pandora-backend",
   "version": "1.0.0",
+  "description": "Secure briefcase management backend",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.878.0",
+    "@aws-sdk/s3-request-presigner": "^3.878.0",
     "@supabase/supabase-js": "^2.55.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -14,7 +19,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "zod": "^4.1.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
