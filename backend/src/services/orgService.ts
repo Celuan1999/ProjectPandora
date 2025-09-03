@@ -1,14 +1,14 @@
 // src/services/orgService.ts
 
 import { z } from 'zod';
-import { parse } from '../lib/validation';
+import { parse, ValidationResult } from '../lib/validation'; // Explicit import
 import { json, problemJson } from '../lib/responses';
-import { Response } from 'express'; // Adjust if using another framework
+import { Response } from 'express';
 
 // Zod schemas
 const orgSchema = z.object({
   id: z.string().uuid(),
-  name: z.string().min(1, 'Name is required').max(100),
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   createdAt: z.date().default(() => new Date()),
 });
 
@@ -21,29 +21,32 @@ const membershipSchema = z.object({
 type Organization = z.infer<typeof orgSchema>;
 type Membership = z.infer<typeof membershipSchema>;
 
-// Mock database (replace with Prisma, TypeORM, etc.)
 const db = {
-  createOrg: async (data: Organization) => ({ ...data }), // Placeholder
-  getOrg: async (id: string) => ({ id, name: 'Example Org', createdAt: new Date() }), // Placeholder
-  addMember: async (data: Membership) => ({ ...data }), // Placeholder
-  removeMember: async (userId: string, orgId: string) => true, // Placeholder
+  createOrg: async (data: Organization) => ({ ...data }),
+  getOrg: async (id: string) => ({ id, name: 'Example Org', createdAt: new Date() }),
+  addMember: async (data: Membership) => ({ ...data }),
+  removeMember: async (userId: string, orgId: string) => true,
 };
 
-/**
- * Creates a new organization
- */
+// Type guard
+function isValid<T>(validation: ValidationResult<T>): validation is { success: true; data: T } {
+  return validation.success;
+}
+
 export async function createOrg(data: unknown, res: Response): Promise<void> {
   const validation = parse(orgSchema, data);
-  if (!validation.success) {
+  if (!isValid(validation)) {
     return problemJson(res, 400, {
       type: '/errors/invalid-input',
       title: 'Invalid Input',
       status: 400,
-      detail: validation.error?.message,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid organization data',
     });
   }
+
+  const orgData = validation.data; // Type-safe
   try {
-    const org = await db.createOrg(validation.data);
+    const org = await db.createOrg(orgData);
     return json(res, 201, org);
   } catch (error) {
     return problemJson(res, 500, {
@@ -55,21 +58,20 @@ export async function createOrg(data: unknown, res: Response): Promise<void> {
   }
 }
 
-/**
- * Adds a member to an organization
- */
 export async function addMember(data: unknown, res: Response): Promise<void> {
   const validation = parse(membershipSchema, data);
-  if (!validation.success) {
+  if (!isValid(validation)) {
     return problemJson(res, 400, {
       type: '/errors/invalid-input',
       title: 'Invalid Input',
       status: 400,
-      detail: validation.error?.message,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid membership data',
     });
   }
+
+  const membershipData = validation.data; // Type-safe
   try {
-    const membership = await db.addMember(validation.data);
+    const membership = await db.addMember(membershipData);
     return json(res, 201, membership);
   } catch (error) {
     return problemJson(res, 500, {
@@ -81,10 +83,20 @@ export async function addMember(data: unknown, res: Response): Promise<void> {
   }
 }
 
-/**
- * Removes a member from an organization
- */
 export async function removeMember(userId: string, orgId: string, res: Response): Promise<void> {
+  const validation = parse(
+    z.object({ userId: z.string().uuid(), orgId: z.string().uuid() }),
+    { userId, orgId }
+  );
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid user or organization ID',
+    });
+  }
+
   try {
     const success = await db.removeMember(userId, orgId);
     if (!success) {

@@ -2,7 +2,7 @@
 
 import { z, ZodError } from 'zod';
 
-// Example schemas (unchanged)
+// Example schemas
 export const userSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
@@ -19,8 +19,8 @@ export const resourceSchema = z.object({
 export type User = z.infer<typeof userSchema>;
 export type Resource = z.infer<typeof resourceSchema>;
 
-// Validation result interface
-interface ValidationResult<T> {
+// Validation result interface (now exported)
+export interface ValidationResult<T> {
   success: boolean;
   data?: T;
   error?: ZodError;
