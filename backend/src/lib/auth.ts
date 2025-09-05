@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { generateRequestId } from './crypto';
 import { logger } from './logger';
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 interface AuthenticatedRequest extends Request {
   user?: { userId: string; email: string };

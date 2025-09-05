@@ -3,14 +3,12 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Button, { ColorTypes } from '../components/ui/button'
-import { useUser } from '../context/userContext'
 
 import { createClient } from '@/app/utils/supabase/component'
 
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
-  const { user } = useUser()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,12 +19,11 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       console.error(error)
     } else {
-      // UserContext will automatically update via onAuthStateChange
       router.push('/')
     }
     setLoading(false)
@@ -36,41 +33,14 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({ email, password })
     if (error) {
       setError(error.message)
       console.error(error)
     } else {
-      // UserContext will automatically update via onAuthStateChange
       router.push('/')
     }
     setLoading(false)
-  }
-
-  // If user is already logged in, show logged-in message
-  if (user) {
-    return (
-      <div className="min-h-[calc(100vh-var(--navbar-height))] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Already Logged In
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              You are already signed in as {user.user.email}
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <Button
-              onClick={() => router.push('/')}
-              className="px-6 py-2"
-            >
-              Go to Home
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (

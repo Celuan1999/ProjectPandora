@@ -8,7 +8,7 @@ export default function BriefcaseCard({ title, description, image }: { title: st
                 </div>
                 <div className="flex flex-col items-start justify-start">
                     <p className="text-gray-700">{description}</p>
-                    <a className="text-gray-400 text-sm cursor-pointer">Request Access</a>
+                    <p className="text-gray-400 text-sm">Request Access</p>
                 </div>
             </div>
         </div>

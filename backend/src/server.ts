@@ -1,6 +1,8 @@
 // backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
 import { router as adminUsersRouter } from './api/admin/users/route';
 import { router as projectsRouter } from './api/projects/route';
 import { logger } from './lib/logger';
