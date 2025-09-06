@@ -3,7 +3,6 @@
 import express from 'express';
 import { createOrg, addMember, removeMember } from './services/orgService';
 import { createTeam, addTeamMember, removeTeamMember } from './services/teamService';
-import { createProject, addProjectMember, removeProjectMember } from './services/projectService';
 import { uploadIntent, complete, listByProject, downloadIntent, rename, deleteFile, changeClearance } from './services/fileService';
 import { createP2P, viewOnce, cancel } from './services/p2pService';
 import { addOverride, removeOverride, expireOverrides } from './services/overrideService';
@@ -22,11 +21,6 @@ router.delete('/orgs/:orgId/members/:userId', (req, res) => removeMember(req.par
 router.post('/teams', (req, res) => createTeam(req.body, res));
 router.post('/teams/:teamId/members', (req, res) => addTeamMember(req.body, res));
 router.delete('/teams/:teamId/members/:userId', (req, res) => removeTeamMember(req.params.userId, req.params.teamId, res));
-
-// Project routes
-router.post('/projects', (req, res) => createProject(req.body, res));
-router.post('/projects/:projectId/members', (req, res) => addProjectMember(req.body, res));
-router.delete('/projects/:projectId/members/:userId', (req, res) => removeProjectMember(req.params.userId, req.params.projectId, res));
 
 // File routes
 router.post('/files/upload-intent/:projectId', (req, res) => uploadIntent(req.params.projectId, req.body.name, res));

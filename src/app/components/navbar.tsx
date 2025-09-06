@@ -5,7 +5,7 @@ import Button, { ColorTypes } from "./ui/button";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import Logo from "@/public/logo.png";
+// import Logo from "@/public/logo.png";
 import { useUser } from '@/app/context/userContext'
 import { createClient } from '@/app/utils/supabase/component'
 

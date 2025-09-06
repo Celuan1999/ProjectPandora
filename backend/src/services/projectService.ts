@@ -2,19 +2,17 @@
 
 import { z } from 'zod';
 import { parse, ValidationResult } from '../lib/validation';
-import { json, problemJson } from '../lib/responses';
-import { Response } from 'express';
 
 const projectSchema = z.object({
-  id: z.string().uuid(),
-  teamId: z.string().uuid(),
-  name: z.string().min(1, 'Name is required').max(100),
+  id: z.string().uuid({ message: 'Invalid UUID for id' }),
+  teamId: z.string().uuid({ message: 'Invalid UUID for teamId' }),
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   createdAt: z.date().default(() => new Date()),
 });
 
 const projectMemberSchema = z.object({
-  userId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  userId: z.string().uuid({ message: 'Invalid UUID for userId' }),
+  projectId: z.string().uuid({ message: 'Invalid UUID for projectId' }),
   role: z.enum(['lead', 'member']),
 });
 
@@ -32,87 +30,109 @@ function isValid<T>(validation: ValidationResult<T>): validation is { success: t
   return validation.success;
 }
 
-export async function createProject(data: unknown, res: Response): Promise<void> {
+export async function createProject(data: unknown): Promise<{ status: number; data?: Project; error?: { type: string; title: string; status: number; detail: string }> {
   const validation = parse(projectSchema, data);
   if (!isValid(validation)) {
-    return problemJson(res, 400, {
-      type: '/errors/invalid-input',
-      title: 'Invalid Input',
+    return {
       status: 400,
-      detail: validation.error?.format()._errors.join(', ') || 'Invalid project data',
-    });
+      error: {
+        type: '/errors/invalid-input',
+        title: 'Invalid Input',
+        status: 400,
+        detail: validation.error?.format()._errors.join(', ') || 'Invalid project data',
+      },
+    };
   }
 
-  const projectData = validation.data;
   try {
-    const project = await db.createProject(projectData);
-    return json(res, 201, project);
+    const project = await db.createProject(validation.data);
+    return { status: 201, data: project };
   } catch (error) {
-    return problemJson(res, 500, {
-      type: '/errors/server-error',
-      title: 'Server Error',
+    return {
       status: 500,
-      detail: error instanceof Error ? error.message : 'Unknown error',
-    });
+      error: {
+        type: '/errors/server-error',
+        title: 'Server Error',
+        status: 500,
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      },
+    };
   }
 }
 
-export async function addProjectMember(data: unknown, res: Response): Promise<void> {
+export async function addProjectMember(data: unknown): Promise<{ status: number; data?: ProjectMember; error?: { type: string; title: string; status: number; detail: string }> {
   const validation = parse(projectMemberSchema, data);
   if (!isValid(validation)) {
-    return problemJson(res, 400, {
-      type: '/errors/invalid-input',
-      title: 'Invalid Input',
+    return {
       status: 400,
-      detail: validation.error?.format()._errors.join(', ') || 'Invalid project member data',
-    });
+      error: {
+        type: '/errors/invalid-input',
+        title: 'Invalid Input',
+        status: 400,
+        detail: validation.error?.format()._errors.join(', ') || 'Invalid project member data',
+      },
+    };
   }
 
-  const memberData = validation.data;
   try {
-    const member = await db.addProjectMember(memberData);
-    return json(res, 201, member);
+    const member = await db.addProjectMember(validation.data);
+    return { status: 201, data: member };
   } catch (error) {
-    return problemJson(res, 500, {
-      type: '/errors/server-error',
-      title: 'Server Error',
+    return {
       status: 500,
-      detail: error instanceof Error ? error.message : 'Unknown error',
-    });
+      error: {
+        type: '/errors/server-error',
+        title: 'Server Error',
+        status: 500,
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      },
+    };
   }
 }
 
-export async function removeProjectMember(userId: string, projectId: string, res: Response): Promise<void> {
+export async function removeProjectMember(userId: string, projectId: string): Promise<{ status: number; data?: null; error?: { type: string; title: string; status: number; detail: string }> {
   const validation = parse(
-    z.object({ userId: z.string().uuid(), projectId: z.string().uuid() }),
+    z.object({
+      userId: z.string().uuid({ message: 'Invalid UUID for userId' }),
+      projectId: z.string().uuid({ message: 'Invalid UUID for projectId' }),
+    }),
     { userId, projectId }
   );
   if (!isValid(validation)) {
-    return problemJson(res, 400, {
-      type: '/errors/invalid-input',
-      title: 'Invalid Input',
+    return {
       status: 400,
-      detail: validation.error?.format()._errors.join(', ') || 'Invalid user or project ID',
-    });
+      error: {
+        type: '/errors/invalid-input',
+        title: 'Invalid Input',
+        status: 400,
+        detail: validation.error?.format()._errors.join(', ') || 'Invalid user or project ID',
+      },
+    };
   }
 
   try {
     const success = await db.removeProjectMember(userId, projectId);
     if (!success) {
-      return problemJson(res, 404, {
-        type: '/errors/not-found',
-        title: 'Not Found',
+      return {
         status: 404,
-        detail: 'Project membership not found',
-      });
+        error: {
+          type: '/errors/not-found',
+          title: 'Not Found',
+          status: 404,
+          detail: 'Project membership not found',
+        },
+      };
     }
-    return json(res, 204, null);
+    return { status: 204, data: null };
   } catch (error) {
-    return problemJson(res, 500, {
-      type: '/errors/server-error',
-      title: 'Server Error',
+    return {
       status: 500,
-      detail: error instanceof Error ? error.message : 'Unknown error',
-    });
+      error: {
+        type: '/errors/server-error',
+        title: 'Server Error',
+        status: 500,
+        detail: error instanceof Error ? error.message : 'Unknown error',
+      },
+    };
   }
 }

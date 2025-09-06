@@ -4,6 +4,7 @@ import express from 'express';
 import { startP2PCleanupWorker } from './jobs/p2pCleanupWorker';
 import { startOverridesExpiryWorker } from './jobs/overridesExpiryWorker';
 import routes from './routes';
+import projectRoutes from './api/projects/route';
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 
@@ -15,20 +16,17 @@ const logger = createLogger({
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json()); // Parse JSON bodies
-app.use('/uploads', express.static(path.join(__dirname, '../uploads'))); // Serve uploaded files
-app.use('/api', routes); // Mount API routes
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../Uploads')));
+app.use('/api', routes); // Other routes
+app.use('/api/projects', projectRoutes); // Mount project routes
 
-// Start server
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
-  
-  // Start background workers
-  startP2PCleanupWorker(3600000); // Run every hour
-  startOverridesExpiryWorker(3600000); // Run every hour
+  startP2PCleanupWorker(3600000);
+  startOverridesExpiryWorker(3600000);
 });
 
-// Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error(err.message);
   res.status(500).json({
