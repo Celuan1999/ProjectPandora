@@ -83,7 +83,7 @@ const MobileMenu = ({ isOpen, onClose, getLinkClasses }: {
           <div className="p-4 border-t border-gray-200">
             {loading ? (
               <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
               </div>
             ) : isAuthenticated() ? (
               <div className="flex flex-col gap-2">
@@ -168,7 +168,9 @@ const DesktopNavigation = ({ getLinkClasses }: { getLinkClasses: (path: string) 
       </div>
       <div className="hidden lg:flex gap-4 px-4 items-center">
         {loading ? (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+          <div className="flex items-center justify-center p-2">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+          </div>
         ) : isAuthenticated() ? (
           <div className="relative">
             {/* Profile Icon Button */}
@@ -181,7 +183,7 @@ const DesktopNavigation = ({ getLinkClasses }: { getLinkClasses: (path: string) 
                 alt="Profile"
                 width={48}
                 height={48}
-                className="rounded-full object-cover"
+                className="rounded-full object-cover w-12 h-12"
               />
             </button>
 
