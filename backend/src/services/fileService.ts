@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { parse, ValidationResult } from '../lib/validation';
 import { json, problemJson } from '../lib/responses';
-import { presignPut, presignGet } from '../lib/storage';
+import { storeFile, getFile } from '../lib/storage';
 import { Response } from 'express';
 
 const fileSchema = z.object({
@@ -33,7 +33,7 @@ const db = {
   ],
   updateFile: async (fileId: string, data: Partial<File>) => ({ id: fileId, ...data }),
   deleteFile: async (fileId: string) => true,
-  getFile: async (fileId: string) => ({ // Added getFile
+  getFile: async (fileId: string) => ({
     id: fileId,
     projectId: 'project-uuid',
     name: 'file.txt',
@@ -47,7 +47,19 @@ function isValid<T>(validation: ValidationResult<T>): validation is { success: t
   return validation.success;
 }
 
-// ... (uploadIntent and listByProject unchanged)
+export async function uploadIntent(projectId: string, fileName: string, res: Response): Promise<void> {
+  try {
+    const filePath = await storeFile({ projectId, fileName });
+    return json(res, 200, { filePath }); // Return local file path for client to upload to
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
 
 export async function complete(data: unknown, res: Response): Promise<void> {
   const validation = parse(fileSchema, data);
@@ -60,10 +72,24 @@ export async function complete(data: unknown, res: Response): Promise<void> {
     });
   }
 
-  const fileData = validation.data; // Type-safe
+  const fileData = validation.data;
   try {
     const file = await db.createFile(fileData);
     return json(res, 201, file);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function listByProject(projectId: string, res: Response): Promise<void> {
+  try {
+    const files = await db.listFilesByProject(projectId);
+    return json(res, 200, files);
   } catch (error) {
     return problemJson(res, 500, {
       type: '/errors/server-error',
@@ -85,11 +111,8 @@ export async function downloadIntent(fileId: string, res: Response): Promise<voi
         detail: 'File not found',
       });
     }
-    const url = await presignGet({
-      bucket: 'project-pandora-files',
-      key: `projects/${file.projectId}/${file.name}`,
-    });
-    return json(res, 200, { presignedUrl: url });
+    const filePath = await getFile({ projectId: file.projectId, fileName: file.name });
+    return json(res, 200, { filePath }); // Return file path for download
   } catch (error) {
     return problemJson(res, 500, {
       type: '/errors/server-error',
@@ -111,10 +134,33 @@ export async function rename(data: unknown, res: Response): Promise<void> {
     });
   }
 
-  const renameData = validation.data; // Type-safe
+  const renameData = validation.data;
   try {
     const file = await db.updateFile(renameData.fileId, { name: renameData.newName });
     return json(res, 200, file);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function deleteFile(fileId: string, res: Response): Promise<void> {
+  try {
+    const file = await db.getFile(fileId);
+    if (!file) {
+      return problemJson(res, 404, {
+        type: '/errors/not-found',
+        title: 'Not Found',
+        status: 404,
+        detail: 'File not found',
+      });
+    }
+    await db.deleteFile(fileId);
+    return json(res, 204, null);
   } catch (error) {
     return problemJson(res, 500, {
       type: '/errors/server-error',
@@ -136,7 +182,7 @@ export async function changeClearance(data: unknown, res: Response): Promise<voi
     });
   }
 
-  const clearanceData = validation.data; // Type-safe
+  const clearanceData = validation.data;
   try {
     const file = await db.updateFile(clearanceData.fileId, { clearance: clearanceData.clearance });
     return json(res, 200, file);
@@ -149,5 +195,3 @@ export async function changeClearance(data: unknown, res: Response): Promise<voi
     });
   }
 }
-
-// ... (deleteFile unchanged)

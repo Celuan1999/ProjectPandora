@@ -93,7 +93,7 @@ export const getUserDetails = async (
   orgId: string,
   requestId: string
 ): Promise<UserDetails | null> => {
-  if (userCtx.role !== ROLES.ADMIN || userCtx.clearance < SECURITY_LEVELS.CONFIDENTIAL) { // Updated: LEVEL_2 -> CONFIDENTIAL
+  if (userCtx.role !== ROLES.ADMIN || userCtx.clearance < SECURITY_LEVELS.CONFIDENTIAL) {
     logger.warn('Unauthorized user details request', {
       requestId,
       userId: userCtx.userId,

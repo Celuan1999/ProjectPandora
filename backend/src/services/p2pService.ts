@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { parse, ValidationResult } from '../lib/validation';
 import { json, problemJson } from '../lib/responses';
-import { presignGet } from '../lib/storage';
+import { getFile } from '../lib/storage';
 import { Response } from 'express';
 
 const p2pSchema = z.object({
@@ -15,13 +15,13 @@ const p2pSchema = z.object({
 });
 
 type P2P = z.infer<typeof p2pSchema>;
-type File = { id: string; projectId: string; name: string; clearance: string; createdAt: Date }; // Minimal type for getFile
+type File = { id: string; projectId: string; name: string; clearance: string; createdAt: Date };
 
 const db = {
   createP2P: async (data: P2P) => ({ ...data }),
   getP2P: async (id: string) => ({ id, fileId: 'file-uuid', recipientId: 'user-uuid', viewOnce: true, expiresAt: new Date() }),
   cancelP2P: async (id: string) => true,
-  getFile: async (fileId: string) => ({ // Added getFile
+  getFile: async (fileId: string) => ({
     id: fileId,
     projectId: 'project-uuid',
     name: 'file.txt',
@@ -46,7 +46,7 @@ export async function createP2P(data: unknown, res: Response): Promise<void> {
     });
   }
 
-  const p2pData = validation.data; // Type-safe
+  const p2pData = validation.data;
   try {
     const p2p = await db.createP2P(p2pData);
     return json(res, 201, p2p);
@@ -72,13 +72,12 @@ export async function viewOnce(p2pId: string, res: Response): Promise<void> {
       });
     }
     const file = await db.getFile(p2p.fileId);
-    const url = await presignGet({
-      bucket: 'project-pandora-files',
-      key: `projects/${file.projectId}/${file.name}`,
-      expiresIn: 60,
+    const filePath = await getFile({
+      projectId: file.projectId,
+      fileName: file.name,
     });
-    await db.cancelP2P(p2pId);
-    return json(res, 200, { presignedUrl: url });
+    await db.cancelP2P(p2pId); // Expire after viewing
+    return json(res, 200, { filePath });
   } catch (error) {
     return problemJson(res, 500, {
       type: '/errors/server-error',
@@ -89,4 +88,24 @@ export async function viewOnce(p2pId: string, res: Response): Promise<void> {
   }
 }
 
-// ... (cancel unchanged)
+export async function cancel(p2pId: string, res: Response): Promise<void> {
+  try {
+    const success = await db.cancelP2P(p2pId);
+    if (!success) {
+      return problemJson(res, 404, {
+        type: '/errors/not-found',
+        title: 'Not Found',
+        status: 404,
+        detail: 'P2P share not found',
+      });
+    }
+    return json(res, 204, null);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}

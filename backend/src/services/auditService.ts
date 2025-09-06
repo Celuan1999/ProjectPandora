@@ -5,7 +5,6 @@ import { parse, ValidationResult } from '../lib/validation';
 import { json, problemJson } from '../lib/responses';
 import { Response } from 'express';
 
-// Simplified schema to avoid record issue
 const auditEventSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
@@ -13,7 +12,7 @@ const auditEventSchema = z.object({
   resourceId: z.string().uuid(),
   resourceType: z.enum(['file', 'project', 'team', 'org']),
   timestamp: z.date().default(() => new Date()),
-  details: z.object({}).optional(), // Replaced z.record(z.unknown()) with z.object({})
+  details: z.object({}).optional(),
 });
 
 type AuditEvent = z.infer<typeof auditEventSchema>;
@@ -25,7 +24,7 @@ const db = {
   ],
 };
 
-// Type guard for validation
+// Type guard
 function isValid<T>(validation: ValidationResult<T>): validation is { success: true; data: T } {
   return validation.success;
 }
@@ -41,7 +40,7 @@ export async function emit(data: unknown, res: Response): Promise<void> {
     });
   }
 
-  const eventData = validation.data; // Type-safe with isValid
+  const eventData = validation.data;
   try {
     const event = await db.emitEvent(eventData);
     return json(res, 201, event);
@@ -55,4 +54,45 @@ export async function emit(data: unknown, res: Response): Promise<void> {
   }
 }
 
-// ... (list and report functions unchanged)
+export async function list(filters: { resourceId?: string; userId?: string }, res: Response): Promise<void> {
+  try {
+    const events = await db.listEvents(filters);
+    return json(res, 200, events);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function report(resourceId: string, res: Response): Promise<void> {
+  const validation = parse(z.object({ resourceId: z.string().uuid() }), { resourceId });
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid resource ID',
+    });
+  }
+
+  try {
+    const events = await db.listEvents({ resourceId });
+    const report = {
+      resourceId,
+      totalEvents: events.length,
+      actions: events.map((e) => e.action),
+    };
+    return json(res, 200, report);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}

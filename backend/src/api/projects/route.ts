@@ -4,7 +4,7 @@ import { requireAuth } from '../../lib/auth';
 import { resolveOrgContext } from '../../lib/orgContext';
 import { logger } from '../../lib/logger';
 import { hasSufficientClearance } from '../../policies/clearance';
-import { createProject } from '../../services/projectService'; // Corrected to projectService
+import { createProject } from '../../services/projectService'
 import { SECURITY_LEVELS } from '../../types/enum';
 
 const router = Router();

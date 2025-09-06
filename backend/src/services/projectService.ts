@@ -1,64 +1,118 @@
-// backend/src/services/projectService.ts
-import { supabase } from '../lib/supabaseServer';
-import { logger } from '../lib/logger';
-import { Project } from '../types/models';
-import { AUDIT_EVENTS } from '../types/enum';
-import { randomUUID } from 'crypto';
+// src/services/projectService.ts
 
-interface CreateProjectInput {
-  teamId: string;
-  title: string;
-  description?: string;
-  budget_amount?: number;
-  budget_currency?: string;
-  deadline?: string;
-  owner_id?: string;
-  workOrders?: string[];
-  documentation?: string[];
-  prototypeMedia?: string[];
+import { z } from 'zod';
+import { parse, ValidationResult } from '../lib/validation';
+import { json, problemJson } from '../lib/responses';
+import { Response } from 'express';
+
+const projectSchema = z.object({
+  id: z.string().uuid(),
+  teamId: z.string().uuid(),
+  name: z.string().min(1, 'Name is required').max(100),
+  createdAt: z.date().default(() => new Date()),
+});
+
+const projectMemberSchema = z.object({
+  userId: z.string().uuid(),
+  projectId: z.string().uuid(),
+  role: z.enum(['lead', 'member']),
+});
+
+type Project = z.infer<typeof projectSchema>;
+type ProjectMember = z.infer<typeof projectMemberSchema>;
+
+const db = {
+  createProject: async (data: Project) => ({ ...data }),
+  addProjectMember: async (data: ProjectMember) => ({ ...data }),
+  removeProjectMember: async (userId: string, projectId: string) => true,
+};
+
+// Type guard
+function isValid<T>(validation: ValidationResult<T>): validation is { success: true; data: T } {
+  return validation.success;
 }
 
-interface UserContext {
-  userId: string;
-  orgId: string;
-  role: string;
-  clearance: number;
-}
-
-export const createProject = async (
-  userCtx: UserContext,
-  input: CreateProjectInput,
-  requestId: string
-): Promise<Project> => {
-  const project: Project = {
-    id: randomUUID(),
-    org_id: userCtx.orgId,
-    team_id: input.teamId,
-    title: input.title,
-    description: input.description,
-    budget_amount: input.budget_amount,
-    budget_currency: input.budget_currency,
-    deadline: input.deadline,
-    owner_id: input.owner_id || userCtx.userId,
-    workOrders: input.workOrders,
-    documentation: input.documentation,
-    prototypeMedia: input.prototypeMedia,
-  };
-
-  logger.info('Creating project', { requestId, userId: userCtx.userId, projectId: project.id });
-  const { error } = await supabase.from('projects').insert(project);
-  if (error) {
-    logger.error('Failed to create project', { requestId, userId: userCtx.userId, error: error.message });
-    throw new Error(`Failed to create project: ${error.message}`);
+export async function createProject(data: unknown, res: Response): Promise<void> {
+  const validation = parse(projectSchema, data);
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid project data',
+    });
   }
 
-  await supabase.from('audit_events').insert({
-    event_type: AUDIT_EVENTS.PROJECT_CREATED,
-    org_id: userCtx.orgId,
-    user_id: userCtx.userId,
-    payload: { projectId: project.id, title: project.title },
-  });
+  const projectData = validation.data;
+  try {
+    const project = await db.createProject(projectData);
+    return json(res, 201, project);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
 
-  logger.info('Project created', { requestId, userId: userCtx.userId, projectId: project.id });
-  return project;
-};
+export async function addProjectMember(data: unknown, res: Response): Promise<void> {
+  const validation = parse(projectMemberSchema, data);
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid project member data',
+    });
+  }
+
+  const memberData = validation.data;
+  try {
+    const member = await db.addProjectMember(memberData);
+    return json(res, 201, member);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function removeProjectMember(userId: string, projectId: string, res: Response): Promise<void> {
+  const validation = parse(
+    z.object({ userId: z.string().uuid(), projectId: z.string().uuid() }),
+    { userId, projectId }
+  );
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid user or project ID',
+    });
+  }
+
+  try {
+    const success = await db.removeProjectMember(userId, projectId);
+    if (!success) {
+      return problemJson(res, 404, {
+        type: '/errors/not-found',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Project membership not found',
+      });
+    }
+    return json(res, 204, null);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}

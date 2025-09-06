@@ -18,8 +18,8 @@ type Override = z.infer<typeof overrideSchema>;
 
 const db = {
   addOverride: async (data: Override) => ({ ...data }),
-  removeOverride: async (id: string) => true,
-  expireOverrides: async () => 0,
+  removeOverride: async (id: string) => true, // Added
+  expireOverrides: async () => 0, // Added
 };
 
 // Type guard
@@ -38,7 +38,7 @@ export async function addOverride(data: unknown, res: Response): Promise<void> {
     });
   }
 
-  const overrideData = validation.data; // Type-safe
+  const overrideData = validation.data;
   try {
     const override = await db.addOverride(overrideData);
     return json(res, 201, override);
@@ -52,4 +52,48 @@ export async function addOverride(data: unknown, res: Response): Promise<void> {
   }
 }
 
-// ... (removeOverride and expireOverrides unchanged)
+export async function removeOverride(id: string, res: Response): Promise<void> {
+  const validation = parse(z.object({ id: z.string().uuid() }), { id });
+  if (!isValid(validation)) {
+    return problemJson(res, 400, {
+      type: '/errors/invalid-input',
+      title: 'Invalid Input',
+      status: 400,
+      detail: validation.error?.format()._errors.join(', ') || 'Invalid override ID',
+    });
+  }
+
+  try {
+    const success = await db.removeOverride(id);
+    if (!success) {
+      return problemJson(res, 404, {
+        type: '/errors/not-found',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Override not found',
+      });
+    }
+    return json(res, 204, null);
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+export async function expireOverrides(res: Response): Promise<void> {
+  try {
+    const count = await db.expireOverrides();
+    return json(res, 200, { expired: count });
+  } catch (error) {
+    return problemJson(res, 500, {
+      type: '/errors/server-error',
+      title: 'Server Error',
+      status: 500,
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}

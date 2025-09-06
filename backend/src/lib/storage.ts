@@ -1,67 +1,47 @@
 // src/lib/storage.ts
 
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
-// Initialize S3 client (configure with your AWS credentials and region)
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
+// Define the uploads directory (create it if it doesn't exist)
+const UPLOADS_DIR = path.join(__dirname, '../../uploads');
+fs.mkdir(UPLOADS_DIR, { recursive: true }).catch((err) => {
+  console.error(`Failed to create uploads directory: ${err.message}`);
 });
 
-interface PresignOptions {
-  bucket: string;
-  key: string;
-  expiresIn?: number; // Seconds until URL expires
+interface StorageOptions {
+  projectId: string;
+  fileName: string;
 }
 
 /**
- * Generates a presigned URL for uploading an object to S3
- * @param options Presign options (bucket, key, expiresIn)
- * @returns Presigned URL for PUT request
+ * Generates a local file path for uploading a file
+ * @param options Project ID and file name
+ * @returns Local file path
  */
-export async function presignPut({
-  bucket,
-  key,
-  expiresIn = 3600, // Default: 1 hour
-}: PresignOptions): Promise<string> {
+export async function storeFile({ projectId, fileName }: StorageOptions): Promise<string> {
   try {
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-    return await getSignedUrl(s3Client, command, { expiresIn });
+    const uniqueFileName = `${uuidv4()}-${fileName}`;
+    const filePath = path.join(UPLOADS_DIR, projectId, uniqueFileName);
+    await fs.mkdir(path.dirname(filePath), { recursive: true }); // Ensure project directory exists
+    return filePath;
   } catch (error) {
-    throw new Error(`Failed to generate presigned PUT URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to generate file path: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Generates a presigned URL for downloading an object from S3
- * @param options Presign options (bucket, key, expiresIn)
- * @returns Presigned URL for GET request
+ * Retrieves a local file path for downloading a file
+ * @param options Project ID and file name
+ * @returns Local file path
  */
-export async function presignGet({
-  bucket,
-  key,
-  expiresIn = 3600, // Default: 1 hour
-}: PresignOptions): Promise<string> {
+export async function getFile({ projectId, fileName }: StorageOptions): Promise<string> {
   try {
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
-    return await getSignedUrl(s3Client, command, { expiresIn });
+    const filePath = path.join(UPLOADS_DIR, projectId, fileName);
+    await fs.access(filePath); // Check if file exists
+    return filePath;
   } catch (error) {
-    throw new Error(`Failed to generate presigned GET URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to retrieve file path: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
-
-// Example usage:
-/*
-const putUrl = await presignPut({ bucket: 'my-bucket', key: 'uploads/file.txt' });
-const getUrl = await presignGet({ bucket: 'my-bucket', key: 'uploads/file.txt' });
-*/
