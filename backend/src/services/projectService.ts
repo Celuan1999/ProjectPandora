@@ -30,7 +30,7 @@ function isValid<T>(validation: ValidationResult<T>): validation is { success: t
   return validation.success;
 }
 
-export async function createProject(data: unknown): Promise<{ status: number; data?: Project; error?: { type: string; title: string; status: number; detail: string }> {
+export async function createProject(data: unknown): Promise<{ status: number; data?: Project; error?: { type: string; title: string; status: number; detail: string } }> {
   const validation = parse(projectSchema, data);
   if (!isValid(validation)) {
     return {
@@ -60,7 +60,7 @@ export async function createProject(data: unknown): Promise<{ status: number; da
   }
 }
 
-export async function addProjectMember(data: unknown): Promise<{ status: number; data?: ProjectMember; error?: { type: string; title: string; status: number; detail: string }> {
+export async function addProjectMember(data: unknown): Promise<{ status: number; data?: ProjectMember; error?: { type: string; title: string; status: number; detail: string } }> {
   const validation = parse(projectMemberSchema, data);
   if (!isValid(validation)) {
     return {
@@ -90,7 +90,7 @@ export async function addProjectMember(data: unknown): Promise<{ status: number;
   }
 }
 
-export async function removeProjectMember(userId: string, projectId: string): Promise<{ status: number; data?: null; error?: { type: string; title: string; status: number; detail: string }> {
+export async function removeProjectMember(userId: string, projectId: string): Promise<{ status: number; data?: null; error?: { type: string; title: string; status: number; detail: string } }> {
   const validation = parse(
     z.object({
       userId: z.string().uuid({ message: 'Invalid UUID for userId' }),

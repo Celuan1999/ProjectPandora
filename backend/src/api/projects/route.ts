@@ -30,4 +30,4 @@ router.delete('/:projectId/members/:userId', async (req, res) => {
   return res.status(result.status).json({ data: result.data });
 });
 
-export default router;
+export { router };

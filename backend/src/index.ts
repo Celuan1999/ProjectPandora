@@ -4,7 +4,7 @@ import express from 'express';
 import { startP2PCleanupWorker } from './jobs/p2pCleanupWorker';
 import { startOverridesExpiryWorker } from './jobs/overridesExpiryWorker';
 import routes from './routes';
-import projectRoutes from './api/projects/route';
+import { router as projectRoutes } from './api/projects/route';
 import { createLogger, format, transports } from 'winston';
 import path from 'path';
 
