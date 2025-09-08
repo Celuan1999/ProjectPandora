@@ -1,20 +1,16 @@
-// backend/src/api/admin/users/route.ts
-import { Router, Request, Response, NextFunction } from 'express';
-import { requireAuth } from '../../../lib/auth';
-import { logger } from '../../../lib/logger';
+// src/api/admin/users/route.ts
 
-const router = Router();
+import express from 'express';
+import { createUser } from '../../../services/userService';
 
-// Define the custom request interface
-interface AuthenticatedRequest extends Request {
-  user?: { userId: string; email: string };
-  context?: { requestId: string };
-}
+const router = express.Router();
 
-router.get('/', requireAuth, (req: AuthenticatedRequest, res: Response, _next: NextFunction) => {
-  const requestId = req.context?.requestId;
-  logger.info('Fetching admin users', { requestId });
-  res.json({ message: 'Admin users endpoint' });
+router.post('/', async (req, res) => {
+  const result = await createUser(req.body);
+  if (result.error) {
+    return res.status(result.status).json(result.error);
+  }
+  return res.status(result.status).json({ data: result.data });
 });
 
-export { router };
+export default router;
