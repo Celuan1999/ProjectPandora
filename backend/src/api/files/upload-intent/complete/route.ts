@@ -1,7 +1,7 @@
 // src/api/files/complete/route.ts
 
 import express from 'express';
-import { complete } from '../../../services/fileService';
+import { complete } from '../../../../services/fileService';
 
 const router = express.Router();
 

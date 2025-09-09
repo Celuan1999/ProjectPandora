@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const projectService_1 = require("../../../services/projectService");
+const projectService_1 = require("../../../../services/projectService");
 const router = express_1.default.Router();
 router.patch('/', async (req, res) => {
     const { projectId } = req.params;

@@ -1,7 +1,7 @@
 // src/api/projects/[projectId]/route.ts
 
 import express from 'express';
-import { updateProject, deleteProject } from '../../../services/projectService';
+import { updateProject, deleteProject } from '../../../../services/projectService';
 
 const router = express.Router();
 

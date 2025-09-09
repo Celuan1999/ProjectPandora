@@ -1,7 +1,7 @@
 // src/api/projects/[projectId]/members/[userId]/route.ts
 
 import express from 'express';
-import { removeProjectMember } from '../../../../services/projectService';
+import { removeProjectMember } from '../../../../../services/projectService';
 
 const router = express.Router();
 

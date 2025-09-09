@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const teamService_1 = require("../services/teamService"); // Corrected path
+const teamService_1 = require("../../../../../services/teamService");
 const router = express_1.default.Router();
 router.post('/', async (req, res) => {
     const result = await (0, teamService_1.addTeamMember)(req.body);

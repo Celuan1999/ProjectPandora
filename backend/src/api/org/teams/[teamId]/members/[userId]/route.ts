@@ -1,7 +1,7 @@
 // src/api/org/teams/[teamId]/members/route.ts
 
 import express, { Request } from 'express';
-import { addTeamMember } from '../../../services/teamService';
+import { addTeamMember } from '../../../../../../services/teamService';
 
 interface TeamParams extends Record<string, string> {
   teamId: string;
