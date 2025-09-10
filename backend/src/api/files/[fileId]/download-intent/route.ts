@@ -1,16 +1,16 @@
 // src/api/files/[fileId]/download-intent/route.ts
 
-import express from 'express';
+import { Request, Response, Router } from 'express';
 import { downloadIntent } from '../../../../services/fileService';
 
-const router = express.Router();
+interface FileParams { fileId: string; }
 
-router.get('/', async (req, res) => {
+const router = Router();
+
+router.get('/', async (req: Request<FileParams>, res: Response) => {
   const { fileId } = req.params;
   const result = await downloadIntent(fileId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 

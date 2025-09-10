@@ -1,16 +1,18 @@
 // src/api/reports/projects/[projectId]/summary/route.ts
 
-import express from 'express';
-import { getProjectSummary } from '../../../../../services/auditService';
+import { Request, Response, Router } from 'express';
+import { getProjectSummary } from '../../../../../services/projectService';
 
-const router = express.Router();
+interface ProjectParams {
+  projectId: string;
+}
 
-router.get('/', async (req, res) => {
+const router = Router();
+
+router.get('/', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
   const result = await getProjectSummary(projectId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 

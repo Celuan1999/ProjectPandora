@@ -1,16 +1,32 @@
 // src/api/access/overrides/[overrideId]/route.ts
 
-import express from 'express';
-import { removeOverride } from '../../../../services/overrideService';
+import { Request, Response, Router } from 'express';
+import { getOverride, updateOverride, deleteOverride } from '../../../../services/overrideService';
 
-const router = express.Router();
+interface OverrideParams {
+  overrideId: string;
+}
 
-router.delete('/', async (req, res) => {
+const router = Router();
+
+router.get('/', async (req: Request<OverrideParams>, res: Response) => {
   const { overrideId } = req.params;
-  const result = await removeOverride(overrideId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  const result = await getOverride(overrideId);
+  if (result.error) return res.status(result.status).json(result.error);
+  return res.status(result.status).json({ data: result.data });
+});
+
+router.patch('/', async (req: Request<OverrideParams>, res: Response) => {
+  const { overrideId } = req.params;
+  const result = await updateOverride(overrideId, req.body);
+  if (result.error) return res.status(result.status).json(result.error);
+  return res.status(result.status).json({ data: result.data });
+});
+
+router.delete('/', async (req: Request<OverrideParams>, res: Response) => {
+  const { overrideId } = req.params;
+  const result = await deleteOverride(overrideId);
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 

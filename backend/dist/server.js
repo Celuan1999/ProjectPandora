@@ -1,27 +1,41 @@
 "use strict";
+// src/server.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/server.ts
 const express_1 = __importDefault(require("express"));
-const cors_1 = __importDefault(require("cors"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-const route_1 = require("./api/admin/users/route");
-const route_2 = require("./api/projects/route");
+const path_1 = __importDefault(require("path"));
 const logger_1 = require("./lib/logger");
+const workers_1 = require("./lib/workers");
+const routes_1 = __importDefault(require("./routes"));
+const route_1 = __importDefault(require("./api/admin/users/[userId]/route"));
+const route_2 = __importDefault(require("./api/projects/[projectId]/route"));
+const route_3 = __importDefault(require("./api/access/overrides/[overrideId]/route"));
+const route_4 = __importDefault(require("./api/files/[fileId]/route"));
+const route_5 = __importDefault(require("./api/files/[fileId]/download-intent/route"));
+const route_6 = __importDefault(require("./api/p2p/[p2pId]/route"));
+const route_7 = __importDefault(require("./api/projects/[projectId]/files/route"));
+const route_8 = __importDefault(require("./api/projects/[projectId]/members/route"));
+const route_9 = __importDefault(require("./api/projects/[projectId]/members/[userId]/route"));
+const route_10 = __importDefault(require("./api/reports/projects/[projectId]/summary/route"));
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5000;
-app.use((0, cors_1.default)({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+const port = process.env.PORT || 3000;
 app.use(express_1.default.json());
-app.use('/api/admin/users', route_1.router);
-app.use('/api/projects', route_2.router);
-//Message needs to be first with the metadata second for Winston logging purposes
-app.use((err, req, res, next) => {
-    logger_1.logger.error('Unhandled error', { error: err.message, stack: err.stack });
-    res.status(500).json({ error: 'Something went wrong!' });
-});
-app.listen(PORT, () => {
-    logger_1.logger.info(`Server running on port ${PORT}`, { port: PORT });
+app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../Uploads')));
+app.use('/api', routes_1.default);
+app.use('/api/admin/users/:userId', route_1.default);
+app.use('/api/projects/:projectId', route_2.default);
+app.use('/api/access/overrides/:overrideId', route_3.default);
+app.use('/api/files/:fileId', route_4.default);
+app.use('/api/files/:fileId/download-intent', route_5.default);
+app.use('/api/p2p/:p2pId', route_6.default);
+app.use('/api/projects/:projectId/files', route_7.default);
+app.use('/api/projects/:projectId/members', route_8.default);
+app.use('/api/projects/:projectId/members/:userId', route_9.default);
+app.use('/api/reports/projects/:projectId/summary', route_10.default);
+app.listen(port, () => {
+    logger_1.logger.info(`Server running on port ${port}`);
+    (0, workers_1.startP2PCleanupWorker)(3600000);
+    (0, workers_1.startOverridesExpiryWorker)(3600000);
 });

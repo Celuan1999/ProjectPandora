@@ -1,25 +1,30 @@
 // src/api/admin/users/[userId]/route.ts
 
-import express from 'express';
-import { updateUser, deleteUser } from '../../../../services/userService';
+import { Request, Response, Router } from 'express';
+import { getUser, updateUser, deleteUser } from '../../../../services/userService';
 
-const router = express.Router();
+interface UserParams { userId: string; }
 
-router.patch('/', async (req, res) => {
+const router = Router();
+
+router.get('/', async (req: Request<UserParams>, res: Response) => {
   const { userId } = req.params;
-  const result = await updateUser(userId, req.body);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  const result = await getUser(userId);
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 
-router.delete('/', async (req, res) => {
+router.patch('/', async (req: Request<UserParams>, res: Response) => {
+  const { userId } = req.params;
+  const result = await updateUser(userId, req.body);
+  if (result.error) return res.status(result.status).json(result.error);
+  return res.status(result.status).json({ data: result.data });
+});
+
+router.delete('/', async (req: Request<UserParams>, res: Response) => {
   const { userId } = req.params;
   const result = await deleteUser(userId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 

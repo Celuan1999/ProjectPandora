@@ -1,25 +1,25 @@
-// src/api/projects/[projectId]/route.ts
+// src/api/projects/[projectId]/members/route.ts
 
-import express from 'express';
-import { updateProject, deleteProject } from '../../../../services/projectService';
+import { Request, Response, Router } from 'express';
+import { addProjectMember, listProjectMembers } from '../../../../services/projectService';
 
-const router = express.Router();
+interface ProjectParams {
+  projectId: string;
+}
 
-router.patch('/', async (req, res) => {
+const router = Router();
+
+router.post('/', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
-  const result = await updateProject(projectId, req.body);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  const result = await addProjectMember({ ...req.body, projectId });
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 
-router.delete('/', async (req, res) => {
+router.get('/', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
-  const result = await deleteProject(projectId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  const result = await listProjectMembers(projectId);
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 

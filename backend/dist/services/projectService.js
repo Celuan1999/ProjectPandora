@@ -2,81 +2,106 @@
 // src/services/projectService.ts
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createProject = createProject;
+exports.listProjects = listProjects;
+exports.getProject = getProject;
 exports.updateProject = updateProject;
 exports.deleteProject = deleteProject;
 exports.addProjectMember = addProjectMember;
+exports.listProjectMembers = listProjectMembers;
 exports.removeProjectMember = removeProjectMember;
-exports.listProjects = listProjects;
-exports.listFilesByProject = listFilesByProject;
+exports.getProjectSummary = getProjectSummary;
 const zod_1 = require("zod");
 const validation_1 = require("../lib/validation");
+const supabase_js_1 = require("@supabase/supabase-js");
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const projectSchema = zod_1.z.object({
-    id: zod_1.z.string().uuid({ message: 'Invalid UUID for id' }),
-    teamId: zod_1.z.string().uuid({ message: 'Invalid UUID for teamId' }),
-    name: zod_1.z.string().min(1, 'Name is required').max(100, 'Name is too long'),
-    createdAt: zod_1.z.date().default(() => new Date()),
+    id: zod_1.z.string().uuid(),
+    name: zod_1.z.string().min(1),
+    createdAt: zod_1.z.date(),
 });
-const projectUpdateSchema = zod_1.z.object({
-    name: zod_1.z.string().min(1, 'Name is required').max(100, 'Name is too long').optional(),
+const projectCreateSchema = zod_1.z.object({
+    name: zod_1.z.string().min(1),
 });
 const projectMemberSchema = zod_1.z.object({
-    userId: zod_1.z.string().uuid({ message: 'Invalid UUID for userId' }),
-    projectId: zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }),
-    role: zod_1.z.enum(['lead', 'member']),
+    userId: zod_1.z.string().uuid(),
+    projectId: zod_1.z.string().uuid(),
+    role: zod_1.z.enum(['admin', 'member', 'viewer']).optional(),
 });
-const db = {
-    createProject: async (data) => ({ ...data }),
-    addProjectMember: async (data) => ({ ...data }),
-    removeProjectMember: async (userId, projectId) => true,
-    updateProject: async (id, data) => {
-        // Mock: Fetch existing project and merge updates
-        const existingProject = { id, teamId: 'team-uuid', name: 'Existing Project', createdAt: new Date() }; // Replace with DB fetch
-        return { ...existingProject, ...data, id }; // Ensure all required fields
-    },
-    deleteProject: async (id) => true,
-    listProjects: async () => [{ id: 'project-uuid', teamId: 'team-uuid', name: 'Test Project', createdAt: new Date() }],
-    listFilesByProject: async (projectId) => [{ id: 'file-uuid', projectId, name: 'Test File', createdAt: new Date() }],
-};
 function isValid(validation) {
     return validation.success;
 }
 async function createProject(data) {
-    const validation = (0, validation_1.parse)(projectSchema, data);
+    const validation = (0, validation_1.parse)(projectCreateSchema, data);
     if (!isValid(validation)) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project data' } };
     }
     try {
-        const project = await db.createProject(validation.data);
-        return { status: 201, data: project };
+        const { data: project } = await supabase
+            .from('projects')
+            .insert({ ...validation.data, id: crypto.randomUUID(), createdAt: new Date() })
+            .select()
+            .single();
+        if (!project) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project creation failed' } };
+        }
+        const validatedProject = projectSchema.parse(project);
+        return { status: 201, data: validatedProject };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function updateProject(id, data) {
-    const validation = (0, validation_1.parse)(zod_1.z.object({ id: zod_1.z.string().uuid({ message: 'Invalid UUID for id' }), data: projectUpdateSchema }), { id, data });
+async function listProjects() {
+    try {
+        const { data: projects } = await supabase.from('projects').select('*');
+        const validatedProjects = zod_1.z.array(projectSchema).parse(projects || []);
+        return { status: 200, data: validatedProjects };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function getProject(projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), projectId);
     if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project update data' } };
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
     }
     try {
-        const project = await db.updateProject(id, validation.data.data);
-        const validatedProject = projectSchema.parse(project); // Ensure full Project type
+        const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single();
+        if (!project) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project not found' } };
+        }
+        const validatedProject = projectSchema.parse(project);
         return { status: 200, data: validatedProject };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function deleteProject(id) {
-    const validation = (0, validation_1.parse)(zod_1.z.string().uuid({ message: 'Invalid UUID for id' }), id);
+async function updateProject(projectId, data) {
+    const validation = (0, validation_1.parse)(zod_1.z.object({ id: zod_1.z.string().uuid(), data: zod_1.z.object({ name: zod_1.z.string().min(1).optional() }) }), { id: projectId, data });
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project data' } };
+    }
+    try {
+        const { data: project } = await supabase.from('projects').update(validation.data.data).eq('id', projectId).select().single();
+        if (!project) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project not found' } };
+        }
+        const validatedProject = projectSchema.parse(project);
+        return { status: 200, data: validatedProject };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function deleteProject(projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), projectId);
     if (!isValid(validation)) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
     }
     try {
-        const success = await db.deleteProject(id);
-        if (!success) {
-            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project not found' } };
-        }
+        await supabase.from('projects').delete().eq('id', projectId);
         return { status: 204, data: null };
     }
     catch (error) {
@@ -89,46 +114,58 @@ async function addProjectMember(data) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project member data' } };
     }
     try {
-        const member = await db.addProjectMember(validation.data);
+        const { data: member } = await supabase.from('project_members').insert(validation.data).select().single();
         return { status: 201, data: member };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function removeProjectMember(userId, projectId) {
-    const validation = (0, validation_1.parse)(zod_1.z.object({ userId: zod_1.z.string().uuid({ message: 'Invalid UUID for userId' }), projectId: zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }) }), { userId, projectId });
+async function listProjectMembers(projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), projectId);
     if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid user or project ID' } };
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
     }
     try {
-        const success = await db.removeProjectMember(userId, projectId);
-        if (!success) {
-            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project membership not found' } };
-        }
+        const { data: members } = await supabase.from('project_members').select('*').eq('projectId', projectId);
+        const validatedMembers = zod_1.z.array(projectMemberSchema).parse(members || []);
+        return { status: 200, data: validatedMembers };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function removeProjectMember(userId, projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.object({ userId: zod_1.z.string().uuid(), projectId: zod_1.z.string().uuid() }), { userId, projectId });
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project member data' } };
+    }
+    try {
+        await supabase.from('project_members').delete().eq('userId', userId).eq('projectId', projectId);
         return { status: 204, data: null };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function listProjects() {
-    try {
-        const projects = await db.listProjects();
-        return { status: 200, data: projects };
-    }
-    catch (error) {
-        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-}
-async function listFilesByProject(projectId) {
-    const validation = (0, validation_1.parse)(zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }), projectId);
+async function getProjectSummary(projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), projectId);
     if (!isValid(validation)) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
     }
     try {
-        const files = await db.listFilesByProject(projectId);
-        return { status: 200, data: files };
+        const { data: project } = await supabase.from('projects').select('*').eq('id', projectId).single();
+        if (!project) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project not found' } };
+        }
+        const { data: members } = await supabase.from('project_members').select('userId, role').eq('projectId', projectId);
+        const { data: files } = await supabase.from('files').select('id, name, clearance').eq('projectId', projectId);
+        const summary = {
+            project: projectSchema.parse(project),
+            memberCount: members?.length || 0,
+            fileCount: files?.length || 0,
+        };
+        return { status: 200, data: summary };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };

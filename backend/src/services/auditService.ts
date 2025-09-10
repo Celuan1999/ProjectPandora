@@ -2,31 +2,21 @@
 
 import { z } from 'zod';
 import { parse, ValidationResult } from '../lib/validation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 const auditEventSchema = z.object({
-  id: z.string().uuid({ message: 'Invalid UUID for id' }),
-  userId: z.string().uuid({ message: 'Invalid UUID for userId' }),
-  action: z.string().min(1, 'Action is required'),
-  resourceId: z.string().uuid({ message: 'Invalid UUID for resourceId' }),
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  action: z.string(),
+  resourceId: z.string().uuid(),
   resourceType: z.enum(['file', 'project', 'team', 'org']),
-  timestamp: z.date().default(() => new Date()),
-  details: z.object({}).optional(),
+  timestamp: z.date(),
+  details: z.record(z.string(), z.any()).optional(), // Fixed z.record
 });
 
 type AuditEvent = z.infer<typeof auditEventSchema>;
-
-const db = {
-  emitEvent: async (data: AuditEvent) => ({ ...data }),
-  listEvents: async (filters: { resourceId?: string; userId?: string }) => [
-    { id: 'uuid', userId: 'user-uuid', action: 'view', resourceId: 'resource-uuid', resourceType: 'file', timestamp: new Date() },
-  ],
-  getReassignments: async () => [{ id: 'uuid', userId: 'user-uuid', action: 'reassign', resourceId: 'resource-uuid', resourceType: 'project', timestamp: new Date() }],
-  getProjectSummary: async (projectId: string) => ({
-    projectId,
-    totalEvents: 10,
-    actions: ['view', 'edit'],
-  }),
-};
 
 function isValid<T>(validation: ValidationResult<T>): validation is { success: true; data: T } {
   return validation.success;
@@ -35,10 +25,10 @@ function isValid<T>(validation: ValidationResult<T>): validation is { success: t
 export async function emit(data: unknown): Promise<{ status: number; data?: AuditEvent; error?: any }> {
   const validation = parse(auditEventSchema, data);
   if (!isValid(validation)) {
-    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid audit event data' } };
+    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid audit data' } };
   }
   try {
-    const event = await db.emitEvent(validation.data);
+    const { data: event } = await supabase.from('audit_events').insert(validation.data).select().single();
     return { status: 201, data: event };
   } catch (error) {
     return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
@@ -47,22 +37,12 @@ export async function emit(data: unknown): Promise<{ status: number; data?: Audi
 
 export async function list(filters: { resourceId?: string; userId?: string }): Promise<{ status: number; data?: AuditEvent[]; error?: any }> {
   try {
-    const events = await db.listEvents(filters);
-    return { status: 200, data: events };
-  } catch (error) {
-    return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-  }
-}
-
-export async function report(resourceId: string): Promise<{ status: number; data?: any; error?: any }> {
-  const validation = parse(z.string().uuid({ message: 'Invalid UUID for resourceId' }), resourceId);
-  if (!isValid(validation)) {
-    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid resource ID' } };
-  }
-  try {
-    const events = await db.listEvents({ resourceId });
-    const report = { resourceId, totalEvents: events.length, actions: events.map((e) => e.action) };
-    return { status: 200, data: report };
+    let query = supabase.from('audit_events').select('*');
+    if (filters.resourceId) query = query.eq('resourceId', filters.resourceId);
+    if (filters.userId) query = query.eq('userId', filters.userId);
+    const { data: events } = await query;
+    const validatedEvents = z.array(auditEventSchema).parse(events || []);
+    return { status: 200, data: validatedEvents };
   } catch (error) {
     return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
   }
@@ -70,21 +50,23 @@ export async function report(resourceId: string): Promise<{ status: number; data
 
 export async function getReassignments(): Promise<{ status: number; data?: AuditEvent[]; error?: any }> {
   try {
-    const events = await db.getReassignments();
-    return { status: 200, data: events };
+    const { data: events } = await supabase.from('audit_events').select('*').eq('action', 'reassign');
+    const validatedEvents = z.array(auditEventSchema).parse(events || []);
+    return { status: 200, data: validatedEvents };
   } catch (error) {
     return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
   }
 }
 
-export async function getProjectSummary(projectId: string): Promise<{ status: number; data?: any; error?: any }> {
-  const validation = parse(z.string().uuid({ message: 'Invalid UUID for projectId' }), projectId);
+export async function report(resourceId: string): Promise<{ status: number; data?: AuditEvent[]; error?: any }> {
+  const validation = parse(z.string().uuid(), resourceId);
   if (!isValid(validation)) {
-    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
+    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid resource ID' } };
   }
   try {
-    const summary = await db.getProjectSummary(projectId);
-    return { status: 200, data: summary };
+    const { data: events } = await supabase.from('audit_events').select('*').eq('resourceId', resourceId);
+    const validatedEvents = z.array(auditEventSchema).parse(events || []);
+    return { status: 200, data: validatedEvents };
   } catch (error) {
     return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
   }

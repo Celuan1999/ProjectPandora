@@ -1,49 +1,169 @@
 "use strict";
 // src/services/fileService.ts
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadIntent = uploadIntent;
-exports.complete = complete;
 exports.listByProject = listByProject;
-exports.downloadIntent = downloadIntent;
 exports.rename = rename;
 exports.updateFile = updateFile;
-exports.deleteFile = deleteFile;
 exports.changeClearance = changeClearance;
+exports.uploadIntent = uploadIntent;
+exports.downloadIntent = downloadIntent;
+exports.complete = complete;
+exports.deleteFile = deleteFile;
+exports.getFile = getFile;
 const zod_1 = require("zod");
 const validation_1 = require("../lib/validation");
-const storage_1 = require("../lib/storage");
+const supabase_js_1 = require("@supabase/supabase-js");
+const fs_1 = require("fs");
+const path_1 = __importDefault(require("path"));
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const fileSchema = zod_1.z.object({
-    id: zod_1.z.string().uuid({ message: 'Invalid UUID for id' }),
-    projectId: zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }),
-    name: zod_1.z.string().min(1, 'Name is required').max(255),
-    clearance: zod_1.z.enum(['public', 'private', 'restricted']).default('private'),
-    createdAt: zod_1.z.date().default(() => new Date()),
-});
-const renameSchema = zod_1.z.object({
-    fileId: zod_1.z.string().uuid({ message: 'Invalid UUID for fileId' }),
-    newName: zod_1.z.string().min(1, 'Name is required').max(255),
-});
-const clearanceSchema = zod_1.z.object({
-    fileId: zod_1.z.string().uuid({ message: 'Invalid UUID for fileId' }),
+    id: zod_1.z.string().uuid(),
+    projectId: zod_1.z.string().uuid(),
+    name: zod_1.z.string().min(1),
     clearance: zod_1.z.enum(['public', 'private', 'restricted']),
+    createdAt: zod_1.z.date(),
 });
-const db = {
-    createFile: async (data) => ({ ...data }),
-    listFilesByProject: async (projectId) => [{ id: 'file-uuid', projectId, name: 'file.txt', clearance: 'private', createdAt: new Date() }],
-    updateFile: async (fileId, data) => ({ id: fileId, ...data }),
-    deleteFile: async (fileId) => true,
-    getFile: async (fileId) => ({ id: fileId, projectId: 'project-uuid', name: 'file.txt', clearance: 'private', createdAt: new Date() }),
-};
+const fileUpdateSchema = zod_1.z.object({
+    id: zod_1.z.string().uuid(),
+    name: zod_1.z.string().min(1).optional(),
+    clearance: zod_1.z.enum(['public', 'private', 'restricted']).optional(),
+});
 function isValid(validation) {
     return validation.success;
 }
-async function uploadIntent(projectId, fileName) {
-    const validation = (0, validation_1.parse)(zod_1.z.object({ projectId: zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }), fileName: zod_1.z.string().min(1) }), { projectId, fileName });
+async function listByProject(projectId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), projectId);
     if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid input' } };
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
     }
     try {
-        const filePath = await (0, storage_1.storeFile)({ projectId, fileName });
+        const { data: files } = await supabase.from('files').select('*').eq('projectId', projectId);
+        if (!files) {
+            return { status: 200, data: [] };
+        }
+        const validatedFiles = zod_1.z.array(fileSchema).parse(files);
+        return { status: 200, data: validatedFiles };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function rename(data) {
+    const validation = (0, validation_1.parse)(fileUpdateSchema, data);
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid rename data' } };
+    }
+    try {
+        const { data: file } = await supabase.from('files').select('*').eq('id', validation.data.id).single();
+        if (!file) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
+        }
+        if (validation.data.name) {
+            const oldPath = path_1.default.join('Uploads', file.projectId, file.name);
+            const newPath = path_1.default.join('Uploads', file.projectId, validation.data.name);
+            await fs_1.promises.rename(oldPath, newPath);
+        }
+        const { data: updatedFile } = await supabase
+            .from('files')
+            .update({ name: validation.data.name || file.name })
+            .eq('id', validation.data.id)
+            .select()
+            .single();
+        if (!updatedFile) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found after update' } };
+        }
+        const validatedFile = fileSchema.parse(updatedFile);
+        return { status: 200, data: validatedFile };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function updateFile(id, data) {
+    const validation = (0, validation_1.parse)(fileUpdateSchema.omit({ id: true }), data);
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid update data' } };
+    }
+    try {
+        const { data: file } = await supabase.from('files').select('*').eq('id', id).single();
+        if (!file) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
+        }
+        if (validation.data.name) {
+            const oldPath = path_1.default.join('Uploads', file.projectId, file.name);
+            const newPath = path_1.default.join('Uploads', file.projectId, validation.data.name);
+            await fs_1.promises.rename(oldPath, newPath);
+        }
+        const { data: updatedFile } = await supabase
+            .from('files')
+            .update({
+            name: validation.data.name || file.name,
+            clearance: validation.data.clearance || file.clearance,
+        })
+            .eq('id', id)
+            .select()
+            .single();
+        if (!updatedFile) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found after update' } };
+        }
+        const validatedFile = fileSchema.parse(updatedFile);
+        return { status: 200, data: validatedFile };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function changeClearance(data) {
+    const validation = (0, validation_1.parse)(zod_1.z.object({ id: zod_1.z.string().uuid(), clearance: zod_1.z.enum(['public', 'private', 'restricted']) }), data);
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid clearance data' } };
+    }
+    try {
+        const { data: file } = await supabase
+            .from('files')
+            .update({ clearance: validation.data.clearance })
+            .eq('id', validation.data.id)
+            .select()
+            .single();
+        if (!file) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
+        }
+        const validatedFile = fileSchema.parse(file);
+        return { status: 200, data: validatedFile };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function uploadIntent(projectId, name) {
+    const validation = (0, validation_1.parse)(zod_1.z.object({ projectId: zod_1.z.string().uuid(), name: zod_1.z.string().min(1) }), { projectId, name });
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid upload intent data' } };
+    }
+    try {
+        const filePath = path_1.default.join('Uploads', projectId, name);
+        await fs_1.promises.mkdir(path_1.default.dirname(filePath), { recursive: true });
+        return { status: 200, data: { filePath } };
+    }
+    catch (error) {
+        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+    }
+}
+async function downloadIntent(fileId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), fileId);
+    if (!isValid(validation)) {
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file ID' } };
+    }
+    try {
+        const { data: file } = await supabase.from('files').select('*').eq('id', fileId).single();
+        if (!file) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
+        }
+        const filePath = path_1.default.join('Uploads', file.projectId, file.name);
+        await fs_1.promises.access(filePath);
         return { status: 200, data: { filePath } };
     }
     catch (error) {
@@ -56,93 +176,44 @@ async function complete(data) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file data' } };
     }
     try {
-        const file = await db.createFile(validation.data);
+        const { data: file } = await supabase.from('files').insert(validation.data).select().single();
         return { status: 201, data: file };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function listByProject(projectId) {
-    const validation = (0, validation_1.parse)(zod_1.z.string().uuid({ message: 'Invalid UUID for projectId' }), projectId);
-    if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
-    }
-    try {
-        const files = await db.listFilesByProject(projectId);
-        return { status: 200, data: files };
-    }
-    catch (error) {
-        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-}
-async function downloadIntent(fileId) {
-    const validation = (0, validation_1.parse)(zod_1.z.string().uuid({ message: 'Invalid UUID for fileId' }), fileId);
+async function deleteFile(fileId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), fileId);
     if (!isValid(validation)) {
         return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file ID' } };
     }
     try {
-        const file = await db.getFile(fileId);
+        const { data: file } = await supabase.from('files').select('*').eq('id', fileId).single();
         if (!file) {
             return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
         }
-        const filePath = await (0, storage_1.getFile)({ projectId: file.projectId, fileName: file.name });
-        return { status: 200, data: { filePath } };
-    }
-    catch (error) {
-        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-}
-async function rename(data) {
-    const validation = (0, validation_1.parse)(renameSchema, data);
-    if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid rename data' } };
-    }
-    try {
-        const file = await db.updateFile(validation.data.fileId, { name: validation.data.newName });
-        return { status: 200, data: file };
-    }
-    catch (error) {
-        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-}
-async function updateFile(id, data) {
-    const validation = (0, validation_1.parse)(zod_1.z.object({ id: zod_1.z.string().uuid({ message: 'Invalid UUID for id' }), data: fileSchema.partial() }), { id, data });
-    if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file update data' } };
-    }
-    try {
-        const file = await db.updateFile(id, validation.data.data);
-        return { status: 200, data: file };
-    }
-    catch (error) {
-        return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
-    }
-}
-async function deleteFile(fileId) {
-    const validation = (0, validation_1.parse)(zod_1.z.string().uuid({ message: 'Invalid UUID for fileId' }), fileId);
-    if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file ID' } };
-    }
-    try {
-        const success = await db.deleteFile(fileId);
-        if (!success) {
-            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
-        }
+        const filePath = path_1.default.join('Uploads', file.projectId, file.name);
+        await fs_1.promises.unlink(filePath);
+        await supabase.from('files').delete().eq('id', fileId);
         return { status: 204, data: null };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
     }
 }
-async function changeClearance(data) {
-    const validation = (0, validation_1.parse)(clearanceSchema, data);
+async function getFile(fileId) {
+    const validation = (0, validation_1.parse)(zod_1.z.string().uuid(), fileId);
     if (!isValid(validation)) {
-        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid clearance data' } };
+        return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid file ID' } };
     }
     try {
-        const file = await db.updateFile(validation.data.fileId, { clearance: validation.data.clearance });
-        return { status: 200, data: file };
+        const { data: file } = await supabase.from('files').select('*').eq('id', fileId).single();
+        if (!file) {
+            return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'File not found' } };
+        }
+        const validatedFile = fileSchema.parse(file);
+        return { status: 200, data: validatedFile };
     }
     catch (error) {
         return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };

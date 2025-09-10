@@ -1,16 +1,16 @@
 // src/api/projects/[projectId]/files/route.ts
 
-import express from 'express';
-import { listFilesByProject } from '../../../../services/projectService';
+import { Request, Response, Router } from 'express';
+import { listByProject } from '../../../../services/fileService';
 
-const router = express.Router();
+interface ProjectParams { projectId: string; }
 
-router.get('/', async (req, res) => {
+const router = Router();
+
+router.get('/', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
-  const result = await listFilesByProject(projectId);
-  if (result.error) {
-    return res.status(result.status).json(result.error);
-  }
+  const result = await listByProject(projectId);
+  if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 
