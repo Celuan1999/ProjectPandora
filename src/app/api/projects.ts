@@ -31,20 +31,6 @@ const getHeaders = (authToken?: string, orgId?: string) => {
   return headers;
 };
 
-// Helper function to build query string
-const buildQueryString = (params: ProjectsQueryParams): string => {
-  const searchParams = new URLSearchParams();
-  
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      searchParams.append(key, value.toString());
-    }
-  });
-  
-  const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : '';
-};
-
 // Projects API
 export const projectsApi = {
   // POST /projects
@@ -91,16 +77,29 @@ export const projectsApi = {
     return response.json();
   },
 
-  // GET /projects
-  getProjects: async (authToken: string, orgId: string, queryParams: ProjectsQueryParams = {}): Promise<ProjectsListResponse> => {
-    const queryString = buildQueryString(queryParams);
-    const response = await fetch(`${API_BASE_URL}/projects${queryString}`, {
+  // GET /api/projects
+  getProjects: async (authToken: string, orgId: string): Promise<{ data: Project[] }> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'GET',
       headers: getHeaders(authToken, orgId),
     });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch projects: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  // GET /projects/:id
+  getProject: async (authToken: string, orgId: string, projectId: string): Promise<{ data: Project }> => {
+    const response = await fetch(`${API_BASE_URL}/api/project/${projectId}`, {
+      method: 'GET',
+      headers: getHeaders(authToken, orgId),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch project: ${response.statusText}`);
     }
     
     return response.json();

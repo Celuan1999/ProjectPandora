@@ -1,0 +1,39 @@
+{
+    "configurations": [
+        
+        {
+            "name": "Launch via NPM",
+            "request": "launch",
+            "runtimeArgs": [
+                "run-script",
+                "debug"
+            ],
+            "runtimeExecutable": "npm",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node"
+        },
+        {
+            "name": "Backend Dev Server",
+            "request": "launch",
+            "runtimeArgs": [
+                "run-script",
+                "dev"
+            ],
+            "runtimeExecutable": "npm",
+            "cwd": "${workspaceFolder}/backend",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "chrome",
+            "name": "http://localhost:8000/",
+            "request": "launch",
+            "url": "http://localhost:8000/"
+        }
+    ]
+}
