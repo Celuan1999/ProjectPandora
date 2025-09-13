@@ -54,16 +54,16 @@ export interface OrgUser {
 
 // Project Types
 export interface Project {
-  id: string;
-  teamId: string;
-  title: string;
+  id: number;
+  teamId: number;
+  name: string;
   description?: string;
   budget_amount?: number;
   budget_currency?: string;
   deadline?: string;
-  owner_id?: string;
-  createdAt: string;
-  updatedAt: string;
+  owner_id?: number;
+  created_at: string;
+  updated_at?: string;
 }
 
 // File Types

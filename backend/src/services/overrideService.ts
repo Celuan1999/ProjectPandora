@@ -3,7 +3,6 @@
 import { z } from 'zod';
 import { parse, ValidationResult } from '../lib/validation';
 import { createClient } from '@supabase/supabase-js';
-
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 const overrideSchema = z.object({

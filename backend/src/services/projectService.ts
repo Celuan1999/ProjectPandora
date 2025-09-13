@@ -7,9 +7,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
 const projectSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  createdAt: z.date(),
+  id: z.number(),
+  name: z.string(),
+  created_at: z.string(),
+  description: z.string().nullish(),
+  teamId: z.number().nullish(),
+  budget_amount: z.number().nullish(),
+  budget_currency: z.string().nullish(),
+  deadline: z.string().nullish(),
+  owner_id: z.number().nullish(),
+  updated_at: z.string().nullish(),
 });
 
 const projectCreateSchema = z.object({
@@ -60,8 +67,8 @@ export async function listProjects(): Promise<{ status: number; data?: Project[]
   }
 }
 
-export async function getProject(projectId: string): Promise<{ status: number; data?: Project; error?: any }> {
-  const validation = parse(z.string().uuid(), projectId);
+export async function getProject(projectId: number): Promise<{ status: number; data?: Project; error?: any }> {
+  const validation = parse(z.number(), projectId);
   if (!isValid(validation)) {
     return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
   }
@@ -77,7 +84,7 @@ export async function getProject(projectId: string): Promise<{ status: number; d
   }
 }
 
-export async function updateProject(projectId: string, data: unknown): Promise<{ status: number; data?: Project; error?: any }> {
+export async function updateProject(projectId: number, data: unknown): Promise<{ status: number; data?: Project; error?: any }> {
   const validation = parse(z.object({ id: z.string().uuid(), data: z.object({ name: z.string().min(1).optional() }) }), { id: projectId, data });
   if (!isValid(validation)) {
     return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project data' } };
@@ -94,7 +101,7 @@ export async function updateProject(projectId: string, data: unknown): Promise<{
   }
 }
 
-export async function deleteProject(projectId: string): Promise<{ status: number; data?: null; error?: any }> {
+export async function deleteProject(projectId: number): Promise<{ status: number; data?: null; error?: any }> {
   const validation = parse(z.string().uuid(), projectId);
   if (!isValid(validation)) {
     return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };

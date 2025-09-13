@@ -4,28 +4,29 @@ import { Request, Response, Router } from 'express';
 import { getProject, updateProject, deleteProject } from '../../../services/projectService';
 
 interface ProjectParams {
-  projectId: string;
+  projectId: number;
 }
 
 const router = Router();
 
-router.get('/', async (req: Request<ProjectParams>, res: Response) => {
+router.get('/:projectId', async (req: Request<ProjectParams>, res: Response) => {
+  debugger
   const { projectId } = req.params;
-  const result = await getProject(projectId);
+  const result = await getProject(Number(projectId));
   if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 
-router.patch('/', async (req: Request<ProjectParams>, res: Response) => {
+router.patch('/:projectId', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
-  const result = await updateProject(projectId, req.body);
+  const result = await updateProject(Number(projectId), req.body);
   if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
 
-router.delete('/', async (req: Request<ProjectParams>, res: Response) => {
+router.delete('/:projectId', async (req: Request<ProjectParams>, res: Response) => {
   const { projectId } = req.params;
-  const result = await deleteProject(projectId);
+  const result = await deleteProject(Number(projectId));
   if (result.error) return res.status(result.status).json(result.error);
   return res.status(result.status).json({ data: result.data });
 });
