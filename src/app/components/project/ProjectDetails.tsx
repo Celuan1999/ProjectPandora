@@ -1,11 +1,11 @@
-import { Project, SecurityLevel, ProjectType } from '../../types/Project';
+import { Project, SecurityLevel, ProjectType, getAllProjectTypes } from '../../types/Project';
 import Dropdown from '../ui/dropdown';
 import Button from '../ui/button';
 
 interface ProjectDetailsProps {
   project: Project;
   onSecurityLevelChange: (level: SecurityLevel) => void;
-  onProjectTypeChange: (type: ProjectType) => void;
+  onProjectTypeChange: (type: string) => void; // Changed to string to handle dynamic types
   onRequestAccess: () => void;
 }
 
@@ -20,7 +20,9 @@ export default function ProjectDetails({
     label: level
   }));
 
-  const projectTypeOptions = Object.values(ProjectType).map(type => ({
+  // Dynamically generate project type options including any new types from the project
+  const dynamicProjectTypes = getAllProjectTypes([project.projectType]);
+  const projectTypeOptions = dynamicProjectTypes.map(type => ({
     value: type,
     label: type
   }));
@@ -75,7 +77,7 @@ export default function ProjectDetails({
           <Dropdown
             options={projectTypeOptions}
             value={project.projectType}
-            onChange={(value) => onProjectTypeChange(value as ProjectType)}
+            onChange={(value) => onProjectTypeChange(value)}
             className="w-full"
           />
         </div>

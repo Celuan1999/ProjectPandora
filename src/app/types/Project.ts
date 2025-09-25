@@ -4,8 +4,8 @@ export interface Project {
   description: string;
   funding: number;
   companyName: string;
-  securityLevel: SecurityLevel;
-  projectType: ProjectType;
+  securityLevel: string;
+  projectType: string; // Now supports any string value, including dynamic types
   imageUrl?: string;
   startDate: string;
   expectedDate: string;
@@ -47,5 +47,17 @@ export enum ProjectType {
   SECURITY = 'Security',
   ROBOTICS = 'Robotics',
   AI = 'AI',
-  SIGNAL = 'Signal'
+  SIGNAL = 'Signal',
+}
+
+// Helper function to get all project types including any dynamic ones
+export function getAllProjectTypes(knownTypes: string[] = []): string[] {
+  const enumTypes = Object.values(ProjectType);
+  const uniqueTypes = new Set([...enumTypes, ...knownTypes]);
+  return Array.from(uniqueTypes).sort();
+}
+
+// Helper function to check if a project type is valid
+export function isValidProjectType(type: string): boolean {
+  return Object.values(ProjectType).includes(type as ProjectType) || type.length > 0;
 }

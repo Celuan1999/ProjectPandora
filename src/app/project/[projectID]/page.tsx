@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Project, SecurityLevel, ProjectType } from '../../types/Project';
+import { Project, SecurityLevel, ProjectType, isValidProjectType } from '../../types/Project';
 import { Project as ApiProject } from '../../types/api';
 import { projectsApi } from '../../api/projects';
 import { useUser } from '../../context/userContext';
@@ -22,8 +22,11 @@ const mapApiProjectToFrontend = (apiProject: ApiProject): Project => {
     description: apiProject.description || 'No description available',
     funding: apiProject.budget_amount || 0,
     companyName: 'TechCorp Industries', // This would come from org/team data
-    securityLevel: SecurityLevel.CONFIDENTIAL, // This would come from clearance level
-    projectType: ProjectType.ENGINEERING, // This would be determined by project data
+    securityLevel: apiProject.security_level || 'Public', // This would come from clearance level
+    projectType: isValidProjectType(apiProject.project_type || '') 
+      ? (apiProject.project_type || 'Engineering') 
+      : 'Engineering', // Use provided type if valid, otherwise default to Engineering
+    // Note: This now supports any project type from the API, including new ones like "API2"
     imageUrl: 'https://t4.ftcdn.net/jpg/03/32/59/65/360_F_332596535_lAdLhf6KzbW6PWXBWeIFTovTii1drkbT.jpg', // Default image
     startDate: apiProject.created_at.split('T')[0], // Use created_at as start date
     expectedDate: apiProject.deadline || '2025-12-31', // Use deadline as expected date
@@ -116,7 +119,7 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleProjectTypeChange = (type: ProjectType) => {
+  const handleProjectTypeChange = (type: string) => {
     if (project) {
       setProject({ ...project, projectType: type });
     }

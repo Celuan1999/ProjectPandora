@@ -3,12 +3,14 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react'
 import { AuthSession } from '@/app/types/UserContext'
 import { createClient } from '@/app/utils/supabase/component'
+import { fetchUserById } from '@/app/api/auth'
 
 interface UserContextType {
     user: AuthSession | null
     setUser: (user: AuthSession | null) => void
     isAuthenticated: () => boolean
     loading: boolean
+    fetchUserData: (userId: string) => Promise<void>
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -49,8 +51,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return user !== null && user.user !== null
     }
 
+    const fetchUserData = async (userId: string) => {
+        try {
+            const userData = await fetchUserById(userId)
+            setUser(prevUser => prevUser ? { ...prevUser, userData } : null)
+        } catch (error) {
+            console.error('Failed to fetch user data:', error)
+            throw error
+        }
+    }
+
     return (
-        <UserContext.Provider value={{ user, setUser, isAuthenticated, loading }}>
+        <UserContext.Provider value={{ user, setUser, isAuthenticated, loading, fetchUserData }}>
             {children}
         </UserContext.Provider>
     )

@@ -7,7 +7,8 @@ import path from 'path';
 import { logger } from './lib/logger';
 import { startP2PCleanupWorker, startOverridesExpiryWorker } from './lib/workers';
 import routes from './routes';
-import adminUsersRouter from './api/admin/users/[userId]/route';
+import adminUsersRouter from './api/admin/users/route';
+import adminUserByIdRouter from './api/admin/users/[userId]/route';
 import projectsRouter from './api/projects/[projectId]/route';
 import overridesRouter from './api/access/overrides/[overrideId]/route';
 import filesRouter from './api/files/[fileId]/route';
@@ -34,7 +35,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../Uploads')));
 app.use('/api', routes);
-app.use('/api/admin/users/:userId', adminUsersRouter);
+app.use('/api/admin/users/', adminUsersRouter);
+app.use('/api/admin/user', adminUserByIdRouter);
 app.use('/api/projects/', allProjectRouter); // For fetching all projects
 app.use('/api/project/', projectsRouter); // For fetching a single project
 app.use('/api/access/overrides/:overrideId', overridesRouter);

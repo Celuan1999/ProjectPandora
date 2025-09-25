@@ -17,6 +17,8 @@ const projectSchema = z.object({
   deadline: z.string().nullish(),
   owner_id: z.number().nullish(),
   updated_at: z.string().nullish(),
+  project_type: z.string().nullish(),
+  security_level: z.string().nullish()
 });
 
 const projectCreateSchema = z.object({

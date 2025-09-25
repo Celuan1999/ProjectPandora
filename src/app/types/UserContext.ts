@@ -1,4 +1,7 @@
 import { Session } from '@supabase/supabase-js'
+import { OrgUser } from './api'
 
-// Use Supabase's built-in Session type
-export type AuthSession = Session
+// Extended session type that includes additional user data from database
+export type AuthSession = Session & {
+  userData?: OrgUser
+}

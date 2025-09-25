@@ -6,6 +6,7 @@ import Button, { ColorTypes } from '../components/ui/button'
 import { useUser } from '@/app/context/userContext'
 
 import { createClient } from '@/app/utils/supabase/component'
+import { createNewUser, fetchUserById, fetchUsers } from '@/app/api/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function LoginPage() {
       console.error(error)
     } else {
       // UserContext will automatically update via onAuthStateChange
+      await fetchUserById(data.user.id)
       router.push('/')
     }
     setLoading(false)
@@ -40,9 +42,15 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
       console.error(error)
-    } else {
-      // UserContext will automatically update via onAuthStateChange
-      router.push('/')
+    } else if (data.user) {
+      try {
+        await createNewUser(data.user.id, email)
+        await fetchUserById(data.user.id)
+        router.push('/')
+      } catch (err) {
+        setError('Failed to create user account')
+        console.error(err)
+      }
     }
     setLoading(false)
   }
