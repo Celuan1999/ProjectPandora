@@ -22,7 +22,7 @@ const mapApiProjectToFrontend = (apiProject: ApiProject): Project => {
     description: apiProject.description || 'No description available',
     funding: apiProject.budget_amount || 0,
     companyName: 'TechCorp Industries', // This would come from org/team data
-    securityLevel: apiProject.security_level || 'Public', // This would come from clearance level
+    securityLevel: apiProject.security_level || 'Unclassified', // This would come from clearance level
     projectType: isValidProjectType(apiProject.project_type || '') 
       ? (apiProject.project_type || 'Engineering') 
       : 'Engineering', // Use provided type if valid, otherwise default to Engineering
@@ -99,7 +99,6 @@ export default function ProjectDetailPage() {
           orgId,
           projectId
         );
-        
         const frontendProject = mapApiProjectToFrontend(response.data);
         setProject(frontendProject);
       } catch (err) {

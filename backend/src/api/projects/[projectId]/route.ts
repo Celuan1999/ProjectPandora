@@ -10,7 +10,6 @@ interface ProjectParams {
 const router = Router();
 
 router.get('/:projectId', async (req: Request<ProjectParams>, res: Response) => {
-  debugger
   const { projectId } = req.params;
   const result = await getProject(Number(projectId));
   if (result.error) return res.status(result.status).json(result.error);

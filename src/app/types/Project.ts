@@ -34,11 +34,11 @@ export interface WorkOrder {
 }
 
 export enum SecurityLevel {
-  PUBLIC = 'Public',
-  INTERNAL = 'Internal',
-  CONFIDENTIAL = 'Confidential',
-  SECRET = 'Secret',
-  TOP_SECRET = 'Top Secret'
+  UNCLASSIFIED = 'UNCLASSIFIED',
+  CLASSIFIED = 'CLASSIFIED',
+  SECRET = 'SECRET',
+  TOP_SECRET = 'TOP SECRET',
+  P2P = 'P2P',
 }
 
 export enum ProjectType {
