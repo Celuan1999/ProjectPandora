@@ -13,7 +13,7 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 // Helper function to get headers with auth and org context
-const getHeaders = (authToken?: string, orgId?: string) => {
+const getHeaders = (authToken?: string, userId?: string) => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -24,8 +24,8 @@ const getHeaders = (authToken?: string, orgId?: string) => {
   }
   
   // Add org context header
-  if (orgId) {
-    headers['x-org-id'] = orgId;
+  if (userId) {
+    headers['x-user-id'] = userId;
   }
   
   return headers;
@@ -78,10 +78,10 @@ export const projectsApi = {
   },
 
   // GET /api/projects
-  getProjects: async (authToken: string, orgId: string): Promise<{ data: Project[] }> => {
+  getProjects: async (authToken: string, userId: string): Promise<{ data: Project[] }> => {
     const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'GET',
-      headers: getHeaders(authToken, orgId),
+      headers: getHeaders(authToken, userId),
     });
     
     if (!response.ok) {
@@ -129,6 +129,35 @@ export const projectsApi = {
     
     if (!response.ok) {
       throw new Error(`Failed to remove project member: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  // GET /api/projects/inaccessible
+  getInaccessibleProjects: async (authToken: string, userId: string): Promise<{ data: { id: number; name: string; description: string | null }[] }> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/inaccessible`, {
+      method: 'GET',
+      headers: getHeaders(authToken, userId),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch inaccessible projects: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
+  // POST /api/projects/grant-access
+  grantProjectAccess: async (authToken: string, userId: string, projectId: number): Promise<{ data: { message: string; projectId: number } }> => {
+    const response = await fetch(`${API_BASE_URL}/api/projects/grant-access`, {
+      method: 'POST',
+      headers: getHeaders(authToken, userId),
+      body: JSON.stringify({ projectId }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to grant project access: ${response.statusText}`);
     }
     
     return response.json();

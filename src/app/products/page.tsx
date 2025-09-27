@@ -10,7 +10,7 @@ import { useProjects } from '../hooks/useProjects';
 
 export default function ProductsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { projects, loading, error, refetch } = useProjects();
+  const { projects, inaccessibleProjects, loading, error, refetch, grantAccess } = useProjects();
   const router = useRouter();
 
   const handleCreateProject = async (projectData: CreateProjectRequest) => {
@@ -32,6 +32,16 @@ export default function ProductsPage() {
 
   const handleProjectClick = (projectId: number) => {
     router.push(`/project/${projectId}`);
+  };
+
+  const handleGrantAccess = async (projectId: number) => {
+    try {
+      await grantAccess(projectId);
+      // The projects will be automatically refreshed by the grantAccess function
+    } catch (error) {
+      console.error('Error granting access:', error);
+      alert('Failed to grant access. Please try again.');
+    }
   };
 
 
@@ -153,6 +163,47 @@ export default function ProductsPage() {
             )}
           </div>
         </div>
+
+        {/* Inaccessible Projects Section */}
+        {inaccessibleProjects.length > 0 && (
+          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Projects Requiring Access</h2>
+              <p className="text-gray-600 mb-4">
+                These projects require higher clearance levels. Request access to view more details.
+              </p>
+              
+              <div className="grid gap-4">
+                {inaccessibleProjects.map((project, index) => (
+                  <div 
+                    key={`inaccessible-${index}`}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900">{project.name}</h3>
+                        {project.description && (
+                          <p className="text-gray-600 mt-1">{project.description}</p>
+                        )}
+                        <div className="mt-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Access Required
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        className="ml-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        onClick={() => handleGrantAccess(project.id)}
+                      >
+                        Request Access
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <CreateProjectModal
