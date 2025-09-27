@@ -23,6 +23,14 @@ const projectSchema = z.object({
 
 const projectCreateSchema = z.object({
   name: z.string().min(1),
+  description: z.string().optional(),
+  teamId: z.number().optional(),
+  budget_amount: z.number().optional(),
+  budget_currency: z.string().optional(),
+  deadline: z.string().optional(),
+  owner_id: z.number().optional(),
+  project_type: z.string().optional(),
+  security_level: z.string().optional()
 });
 
 const projectMemberSchema = z.object({
@@ -44,12 +52,19 @@ export async function createProject(data: unknown): Promise<{ status: number; da
     return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project data' } };
   }
   try {
-    const { data: project } = await supabase
+    const projectData = {
+      ...validation.data,
+      id: Math.floor(Math.random() * 1000000), // Generate a random number ID
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    const { data: project, error } = await supabase
       .from('projects')
-      .insert({ ...validation.data, id: crypto.randomUUID(), createdAt: new Date() })
+      .insert(projectData)
       .select()
       .single();
-    if (!project) {
+    if (!project || error) {
       return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project creation failed' } };
     }
     const validatedProject = projectSchema.parse(project);

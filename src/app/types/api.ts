@@ -154,13 +154,15 @@ export interface UpdateUserRequest {
 }
 
 export interface CreateProjectRequest {
-  teamId: string;
-  title: string;
+  name: string;
   description?: string;
+  teamId?: number;
   budget_amount?: number;
   budget_currency?: string;
   deadline?: string;
-  owner_id?: string;
+  owner_id?: number;
+  project_type?: string;
+  security_level?: string;
 }
 
 export interface UpdateProjectRequest {

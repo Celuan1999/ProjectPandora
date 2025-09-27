@@ -33,9 +33,9 @@ const getHeaders = (authToken?: string, orgId?: string) => {
 
 // Projects API
 export const projectsApi = {
-  // POST /projects
+  // POST /api/projects
   createProject: async (authToken: string, orgId: string, data: CreateProjectRequest): Promise<CreateProjectResponse> => {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'POST',
       headers: getHeaders(authToken, orgId),
       body: JSON.stringify(data),
@@ -48,9 +48,9 @@ export const projectsApi = {
     return response.json();
   },
 
-  // PATCH /projects/:id
+  // PATCH /api/projects/:id
   updateProject: async (authToken: string, orgId: string, projectId: string, data: UpdateProjectRequest): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
       method: 'PATCH',
       headers: getHeaders(authToken, orgId),
       body: JSON.stringify(data),
@@ -63,9 +63,9 @@ export const projectsApi = {
     return response.json();
   },
 
-  // DELETE /projects/:id
+  // DELETE /api/projects/:id
   deleteProject: async (authToken: string, orgId: string, projectId: string): Promise<RemoveResponse> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
       method: 'DELETE',
       headers: getHeaders(authToken, orgId),
     });
@@ -105,9 +105,9 @@ export const projectsApi = {
     return response.json();
   },
 
-  // POST /projects/:id/members
+  // POST /api/projects/:id/members
   addProjectMember: async (authToken: string, orgId: string, projectId: string, data: AddProjectMemberRequest): Promise<AddResponse> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/members`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/members`, {
       method: 'POST',
       headers: getHeaders(authToken, orgId),
       body: JSON.stringify(data),
@@ -120,9 +120,9 @@ export const projectsApi = {
     return response.json();
   },
 
-  // DELETE /projects/:id/members/:userId
+  // DELETE /api/projects/:id/members/:userId
   removeProjectMember: async (authToken: string, orgId: string, projectId: string, userId: string): Promise<RemoveResponse> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/members/${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/members/${userId}`, {
       method: 'DELETE',
       headers: getHeaders(authToken, orgId),
     });
