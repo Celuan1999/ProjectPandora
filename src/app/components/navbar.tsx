@@ -11,12 +11,9 @@ import { createClient } from '@/app/utils/supabase/component'
 
 // Menu items configuration
 const menuItems = [
-  { href: "/products", label: "Products" },
+  { href: "/products", label: "Projects" },
   { href: "/companies", label: "Companies" },
-  { href: "/community", label: "Community" },
-  { href: "/collaborate", label: "Collaborate" },
   { href: "/settings", label: "Settings" },
-  { href: "/link", label: "Link" },
 ];
 
 // Mobile Menu Component
