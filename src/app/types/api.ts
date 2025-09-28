@@ -66,6 +66,8 @@ export interface Project {
   updated_at?: string;
   project_type?: string;
   security_level?: string;
+  image_url?: string;
+  image_filename?: string;
 }
 
 // File Types
@@ -173,6 +175,11 @@ export interface UpdateProjectRequest {
   budget_currency?: string;
   deadline?: string;
   owner_id?: string;
+}
+
+export interface UploadProjectImageRequest {
+  projectId: number;
+  imageFile: File;
 }
 
 export interface AddProjectMemberRequest {

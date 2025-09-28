@@ -6,14 +6,12 @@ interface ProjectDetailsProps {
   project: Project;
   onSecurityLevelChange: (level: SecurityLevel) => void;
   onProjectTypeChange: (type: string) => void; // Changed to string to handle dynamic types
-  onRequestAccess: () => void;
 }
 
 export default function ProjectDetails({
   project,
   onSecurityLevelChange,
   onProjectTypeChange,
-  onRequestAccess
 }: ProjectDetailsProps) {
   const securityLevelOptions = Object.values(SecurityLevel).map(level => ({
     value: level,
@@ -83,15 +81,6 @@ export default function ProjectDetails({
         </div>
       </div>
 
-      {/* Request Access Button */}
-      <div className="pt-4">
-        <Button
-          onClick={onRequestAccess}
-          className="w-full md:w-auto px-8 py-3 text-base"
-        >
-          Request Access
-        </Button>
-      </div>
     </div>
   );
 }

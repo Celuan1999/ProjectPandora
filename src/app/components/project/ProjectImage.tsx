@@ -1,23 +1,82 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface ProjectImageProps {
   imageUrl?: string;
   title: string;
   isFavorited?: boolean;
   onFavoriteToggle?: () => void;
+  projectId?: number;
+  onImageUploaded?: (imageUrl: string) => void;
+  onImageUploadError?: (errorMessage: string) => void;
 }
 
 export default function ProjectImage({ 
   imageUrl, 
   title, 
   isFavorited = false, 
-  onFavoriteToggle 
+  onFavoriteToggle,
+  projectId,
+  onImageUploaded,
+  onImageUploadError
 }: ProjectImageProps) {
   const [isFav, setIsFav] = useState(isFavorited);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFavoriteClick = () => {
     setIsFav(!isFav);
     onFavoriteToggle?.();
+  };
+
+  const handleFileSelect = async (file: File) => {
+    if (!projectId || !onImageUploaded || !onImageUploadError) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      onImageUploadError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      onImageUploadError('Image size must be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      const { projectsApi } = await import('../../api/projects');
+      
+      // For now, we'll use mock auth data - in a real app, this would come from context
+      const mockAuthToken = 'mock-token';
+      const mockOrgId = 'mock-org-id';
+      
+      const response = await projectsApi.uploadProjectImage(
+        mockAuthToken, 
+        mockOrgId, 
+        projectId, 
+        file
+      );
+      
+      onImageUploaded(response.data.image_url || '');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      onImageUploadError('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -73,6 +132,46 @@ export default function ProjectImage({
           />
         </svg>
       </button>
+
+      {/* Upload arrow icon in bottom left */}
+      {projectId && onImageUploaded && onImageUploadError && (
+        <button
+          onClick={handleUploadClick}
+          disabled={isUploading}
+          className="absolute bottom-3 left-3 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Upload new image"
+        >
+          {isUploading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+          ) : (
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+          )}
+        </button>
+      )}
+
+      {/* Hidden file input */}
+      {projectId && onImageUploaded && onImageUploadError && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileInputChange}
+          className="hidden"
+          disabled={isUploading}
+        />
+      )}
     </div>
   );
 }

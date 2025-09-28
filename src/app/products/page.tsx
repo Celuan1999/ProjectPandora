@@ -6,11 +6,11 @@ import Navbar from "../components/navbar";
 import CreateProjectModal from "../components/CreateProjectModal";
 import { projectsApi } from '../api/projects';
 import { CreateProjectRequest } from '../types/api';
-import { useProjects } from '../hooks/useProjects';
+import { useProjects } from '../context/projectContext';
 
 export default function ProductsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { projects, inaccessibleProjects, loading, error, refetch, grantAccess } = useProjects();
+  const { accessibleProjects, inaccessibleProjects, loading, error, refetch, grantAccess } = useProjects();
   const router = useRouter();
 
   const handleCreateProject = async (projectData: CreateProjectRequest) => {
@@ -43,6 +43,7 @@ export default function ProductsPage() {
       alert('Failed to grant access. Please try again.');
     }
   };
+
 
 
   return (
@@ -92,7 +93,7 @@ export default function ProductsPage() {
                   Try Again
                 </button>
               </div>
-            ) : projects.length === 0 ? (
+            ) : accessibleProjects.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-gray-400 mb-4">
                   <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -110,7 +111,7 @@ export default function ProductsPage() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {projects.map((project) => (
+                {accessibleProjects.map((project) => (
                   <div 
                     key={project.id} 
                     className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
