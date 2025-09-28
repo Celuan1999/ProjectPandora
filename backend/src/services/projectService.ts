@@ -38,7 +38,9 @@ const projectSchema = z.object({
   owner_id: z.number().nullish(),
   updated_at: z.string().nullish(),
   project_type: z.string().nullish(),
-  security_level: z.string().nullish()
+  security_level: z.string().nullish(),
+  image_url: z.string().nullish(),
+  image_filename: z.string().nullish()
 });
 
 const projectCreateSchema = z.object({
@@ -313,6 +315,7 @@ export async function grantProjectAccess(userId: string, projectId: number): Pro
   }
 }
 
+
 export async function getProjectSummary(projectId: string): Promise<{ status: number; data?: any; error?: any }> {
   const validation = parse(z.string().uuid(), projectId);
   if (!isValid(validation)) {
@@ -331,6 +334,72 @@ export async function getProjectSummary(projectId: string): Promise<{ status: nu
       fileCount: files?.length || 0,
     };
     return { status: 200, data: summary };
+  } catch (error) {
+    return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
+  }
+}
+
+export async function uploadProjectImage(projectId: number, imageFile: File): Promise<{ status: number; data?: Project; error?: any }> {
+  const validation = parse(z.number(), projectId);
+  if (!isValid(validation)) {
+    return { status: 400, error: { type: '/errors/invalid-input', title: 'Invalid Input', status: 400, detail: validation.error?.format()._errors.join(', ') || 'Invalid project ID' } };
+  }
+
+  try {
+    // Check if project exists
+    const { data: existingProject, error: fetchError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (fetchError || !existingProject) {
+      return { status: 404, error: { type: '/errors/not-found', title: 'Not Found', status: 404, detail: 'Project not found' } };
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const fileExtension = imageFile.name.split('.').pop();
+    const filename = `project-${projectId}-${timestamp}.${fileExtension}`;
+    const filePath = `projectImages/${filename}`;
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('projectImages')
+      .upload(filePath, imageFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+    if (uploadError) {
+      return { status: 500, error: { type: '/errors/server-error', title: 'Upload Failed', status: 500, detail: `Failed to upload image: ${uploadError.message}` } };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('projectImages')
+      .getPublicUrl(filePath);
+
+    // Update project with image information
+    const { data: updatedProject, error: updateError } = await supabase
+      .from('projects')
+      .update({
+        image_url: urlData.publicUrl,
+        image_filename: filename,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', projectId)
+      .select()
+      .single();
+
+    if (updateError || !updatedProject) {
+      // If update fails, try to clean up the uploaded file
+      await supabase.storage.from('projectImages').remove([filePath]);
+      return { status: 500, error: { type: '/errors/server-error', title: 'Update Failed', status: 500, detail: 'Failed to update project with image information' } };
+    }
+
+    const validatedProject = projectSchema.parse(updatedProject);
+    return { status: 200, data: validatedProject };
   } catch (error) {
     return { status: 500, error: { type: '/errors/server-error', title: 'Server Error', status: 500, detail: error instanceof Error ? error.message : 'Unknown error' } };
   }

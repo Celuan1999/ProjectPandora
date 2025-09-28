@@ -162,4 +162,27 @@ export const projectsApi = {
     
     return response.json();
   },
+
+  // POST /api/projects/:projectId/upload-image
+  uploadProjectImage: async (authToken: string, orgId: string, projectId: number, imageFile: File): Promise<{ data: Project }> => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/upload-image`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'x-user-id': orgId,
+        // Don't set Content-Type for FormData, let the browser set it
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to upload project image: ${response.statusText}`);
+    }
+    
+    return response.json();
+  },
+
 };

@@ -19,6 +19,7 @@ import projectMembersRouter from './api/projects/[projectId]/members/route';
 import projectMemberRouter from './api/projects/[projectId]/members/[userId]/route';
 import projectSummaryRouter from './api/reports/projects/[projectId]/summary/route';
 import allProjectRouter from './api/projects/route';
+import uploadProjectImageRouter from './api/projects/[projectId]/upload-image/route';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use('/api/p2p/:p2pId', p2pRouter);
 app.use('/api/projects/:projectId/files', projectFilesRouter);
 app.use('/api/projects/:projectId/members', projectMembersRouter);
 app.use('/api/projects/:projectId/members/:userId', projectMemberRouter);
+app.use('/api/projects/:projectId/upload-image', uploadProjectImageRouter);
 app.use('/api/reports/projects/:projectId/summary', projectSummaryRouter);
 
 app.listen(port, () => {

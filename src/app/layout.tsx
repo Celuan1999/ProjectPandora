@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/navbar";
 import { UserProvider } from "./context/userContext";
+import { ProjectProvider } from "./context/projectContext";
+import { ToastProvider } from "./context/toastContext";
 import ScrollToTop from "@/app/components/ScrollToTop";
 
 const geistSans = Geist({
@@ -31,9 +33,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <UserProvider>
-          <ScrollToTop />
-          <Navbar />
-          {children}
+          <ProjectProvider>
+            <ToastProvider>
+              <ScrollToTop />
+              <Navbar />
+              {children}
+            </ToastProvider>
+          </ProjectProvider>
         </UserProvider>
       </body>
     </html>
