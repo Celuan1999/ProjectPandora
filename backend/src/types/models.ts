@@ -1,8 +1,8 @@
 // backend/src/types/models.ts
 export interface Project {
-  id: number;
-  org_id: number;
-  team_id: number;
+  id: string;
+  org_id: string;
+  team_id: string;
   title: string;
   description?: string;
   budget_amount?: number;
@@ -12,5 +12,5 @@ export interface Project {
   workOrders?: string[];
   documentation?: string[];
   prototypeMedia?: string[];
-  created_at: string[];
+  created_at?: string;
 }
